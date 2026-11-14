@@ -192,7 +192,7 @@ The live report's `unported_modules` (objects alive at the end of the run) of ei
 | 93 | StealthDetectorUpdate | Behavior | 25 | 18 | ported |
 | 94 | AimWeaponBehavior | Behavior | 23 | 12 | missing |
 | 95 | CommandButtonHuntUpdate | Behavior | 23 | 12 | missing |
-| 96 | EvacuateDamage | Behavior | 23 | 19 | missing |
+| 96 | EvacuateDamage | Behavior | 23 | 19 | ported |
 | 97 | HordeGarrisonContain | Behavior | 23 | 18 | ported |
 | 98 | TransportContain | Behavior | 23 | 12 | ported |
 | 99 | CostModifierUpgrade | Behavior | 22 | 19 | ported |

@@ -8,6 +8,7 @@
 #include "GameLogic/Module/AudioLoopUpgrade.h"
 #include "GameLogic/Module/ClickReactionBehavior.h"
 #include "GameLogic/Module/CritterEmitterUpdate.h"
+#include "GameLogic/Module/EvacuateDamage.h"
 #include "GameLogic/Module/ExtraCreateModules.h"
 #include "GameLogic/Module/ExtraDieModules.h"
 #include "GameLogic/Module/ExtraUpdateModules.h"
@@ -47,6 +48,7 @@ void ExtraModules::registerAll(ModuleFactory &modules)
 	bind<CreateObjectDie, CreateObjectDieModuleData>(modules, "CreateObjectDie");
 	bind<FireWeaponWhenDeadBehavior, FireWeaponWhenDeadBehaviorModuleData>(modules, "FireWeaponWhenDeadBehavior");
 	FireWeaponWhenDamagedBehavior::registerModule(modules); // lane MODS-3
+	EvacuateDamage::registerModule(modules);                // fork EVACUATE-1
 	CommandButtonHuntUpdate::registerModule(modules);       // lane MODCOMPAT-MOD1
 	CritterEmitterUpdate::registerModule(modules); // lane MODCOMPAT-MOD1
 	AudioLoopUpgrade::registerModule(modules);     // lane MODCOMPAT-MOD1
