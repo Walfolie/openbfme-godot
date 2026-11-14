@@ -321,6 +321,11 @@ void AptSkirmish::populateRuleChecks()
 			m_ruleStates[(std::size_t)cur->id] = 2; // RW 0x986912: the demo mode
 			window->winEnable(false);
 		}
+		else if (cur->id == RULE_ALLOW_CUSTOM_HEROES && m_setup && !m_setup->customHeroesOffered())
+		{
+			m_ruleStates[(std::size_t)cur->id] = 2; // fork MP-0: the multiplayer product, as the demo mode shows it
+			window->winEnable(false);
+		}
 	}
 	// OpenBFME (lane CHEAT-1): the Cheat Mode row follows RotWK's rows (mode 0, where offered)
 	if (mode == RULES_MODE_SKIRMISH && cheatModeOffered() && (std::size_t)row < m_ruleChecks.size() && m_ruleChecks[(std::size_t)row])

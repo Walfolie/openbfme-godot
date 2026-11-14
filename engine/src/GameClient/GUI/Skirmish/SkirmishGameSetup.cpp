@@ -151,7 +151,24 @@ bool SkirmishGameSetup::init(const std::u16string &userName, std::uint32_t seed,
 		}
 		return false;
 	}
+	applyCustomHeroesOffer();
 	return true;
+}
+
+void SkirmishGameSetup::applyCustomHeroesOffer()
+{
+	if (m_customHeroesOffered)
+	{
+		return;
+	}
+	if (m_info.rules[RULE_ALLOW_CUSTOM_HEROES] != -1)
+	{
+		m_info.rules[RULE_ALLOW_CUSTOM_HEROES] = 0;
+	}
+	for (SkirmishGameSlot &s : m_info.slots)
+	{
+		s.clearCreateAHero(); // also with no rule block (every rule -1), which would keep the heroes
+	}
 }
 
 bool SkirmishGameSetup::restoreSaved(const SkirmishGameInfo &saved, const std::string &preferredMap, std::uint32_t seed, std::string *error)
@@ -197,6 +214,7 @@ bool SkirmishGameSetup::restoreSaved(const SkirmishGameInfo &saved, const std::s
 	info.mapSize = md->fileSize;
 	info.mapMask = m_source.mapContentsMask(*md);
 	m_info = info;
+	applyCustomHeroesOffer(); // a game kept by the full product may allow them
 	return true;
 }
 
@@ -613,6 +631,7 @@ void SkirmishGameSetup::setStrategicMode(bool strategic)
 	m_info.scenario.clear();
 	m_info.rules = MpGameRules::defaults(rulesMode());
 	m_info.cheatMode = -1; // lane CHEAT-1: Cheat Mode is a mode 0 rule
+	applyCustomHeroesOffer();
 }
 
 std::u16string SkirmishGameSetup::ruleName(int rule) const
@@ -645,6 +664,7 @@ bool SkirmishGameSetup::setRule(int rule, int value)
 		return false;
 	}
 	m_info.rules[(size_t)rule] = value;
+	applyCustomHeroesOffer();
 	// RW 0x842A85: the hero combo of a slot is enabled only while rule 0 == 1; otherwise it is disabled and, when it had a choice, set to its first entry and
 	// the hero handler runs (no hero)
 	m_info.clearCreateAHeroesIfNotAllowed();
@@ -656,6 +676,7 @@ void SkirmishGameSetup::resetRules()
 	m_info.rules = MpGameRules::defaults(rulesMode());
 	m_info.legendaryHeroes = LegendaryHeroes::kOff;
 	m_info.cheatMode = -1; // lane CHEAT-1
+	applyCustomHeroesOffer();
 }
 
 bool SkirmishGameSetup::setCheatMode(bool on)

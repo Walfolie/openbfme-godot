@@ -233,6 +233,7 @@ AptSkirmish::AptSkirmish(WindowManager &windows, Shell &shell, ShellEnvironment 
 			windows.note("skirmish-environment-missing", "GameTextSource: every label reads as MISSING: '<label>'");
 		}
 		m_setup = std::make_unique<SkirmishGameSetup>(*environment.skirmish, environment.gameText);
+		m_setup->setCustomHeroesOffered(!environment.multiplayerProduct); // fork MP-0
 		if (environment.options)
 		{
 			m_setup->setSimulationProfile(environment.options->simulationProfile()); // lane UBER-1: the OpenBFME option Uber performance mode

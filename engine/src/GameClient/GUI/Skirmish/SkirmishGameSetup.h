@@ -169,6 +169,14 @@ public:
 		m_localSlot = localSlot;
 	}
 	bool network() const { return m_network; }
+	// fork MP-0: the multiplayer product (ShellEnvironment::multiplayerProduct) offers no Create-a-Hero: AllowCustomHeroes (rule 0) is held at 0 whatever
+	// the mode's defaults, the profile's kept game or a click say, and no slot keeps a hero. The lobby shows the rule's box disabled. Not retail
+	void setCustomHeroesOffered(bool offered)
+	{
+		m_customHeroesOffered = offered;
+		applyCustomHeroesOffer();
+	}
+	bool customHeroesOffered() const { return m_customHeroesOffered; }
 	int localSlot() const { return m_localSlot; }
 	// the network's setup replaces the model's (the host's options, LANAPI)
 	void replaceInfo(const SkirmishGameInfo &info) { m_info = info; }
@@ -230,5 +238,7 @@ private:
 	StrategicScenario m_scenario; // lane WOTR-2
 	bool m_haveScenario = false;
 	bool m_network = false; // lane MP-2
+	bool m_customHeroesOffered = true; // fork MP-0
+	void applyCustomHeroesOffer();
 	int m_localSlot = 0;
 };

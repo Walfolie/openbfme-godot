@@ -1790,6 +1790,73 @@ TEST_CASE("rules1 setup: the Rules tab model: the mode's defaults, the rows' tex
 	CHECK(m.game.startingCash == -1);
 }
 
+// fork MP-0: the multiplayer product offers no Create-a-Hero. The setup holds AllowCustomHeroes at 0 through every path that sets the rules (the
+// defaults, a click, Reset, the strategic mode, the profile's kept game) and no slot keeps a hero; the full product keeps RotWK's default (on)
+TEST_CASE("mp0 setup: the multiplayer product holds AllowCustomHeroes at 0 and drops every slot's hero; the full product keeps the default")
+{
+	FakeSetup src;
+	MapGameText text;
+	std::string error;
+	{
+		SkirmishGameSetup full = makeSetup(src, text);
+		REQUIRE_MESSAGE(full.init(u"Gimli", 77, std::string(), &error), error);
+		CHECK(full.customHeroesOffered());
+		CHECK(full.info().rules[RULE_ALLOW_CUSTOM_HEROES] == 1);
+	}
+	SkirmishGameSetup setup = makeSetup(src, text);
+	setup.setCustomHeroesOffered(false);
+	REQUIRE_MESSAGE(setup.init(u"Gimli", 77, std::string(), &error), error);
+	CHECK(setup.info().rules[RULE_ALLOW_CUSTOM_HEROES] == 0);
+	CHECK_FALSE(setup.info().customHeroesAllowed());
+	CHECK(setup.setRule(RULE_ALLOW_CUSTOM_HEROES, 1));
+	CHECK(setup.info().rules[RULE_ALLOW_CUSTOM_HEROES] == 0);
+	SkirmishGameInfo info = setup.info();
+	info.slots[0].hasCreateAHero = true;
+	setup.replaceInfo(info); // the host's setup in a network game is the host's: the next rule change still drops the hero
+	CHECK(setup.setRule(RULE_INITIAL_RESOURCES, 2500));
+	CHECK_FALSE(setup.info().slots[0].hasCreateAHero);
+	setup.resetRules();
+	CHECK(setup.info().rules[RULE_ALLOW_CUSTOM_HEROES] == 0);
+	setup.setStrategicMode(true);
+	CHECK_FALSE(setup.info().customHeroesAllowed());
+	setup.setStrategicMode(false);
+	// a game the full product kept with the profile (rule 0 on, a hero in slot 0)
+	SkirmishGameInfo kept = setup.info();
+	kept.rules[RULE_ALLOW_CUSTOM_HEROES] = 1;
+	kept.slots[0].hasCreateAHero = true;
+	REQUIRE_MESSAGE(setup.restoreSaved(kept, std::string(), 78, &error), error);
+	CHECK(setup.info().rules[RULE_ALLOW_CUSTOM_HEROES] == 0);
+	CHECK_FALSE(setup.info().slots[0].hasCreateAHero);
+	CHECK(setup.makeNewGameMessage().game.rules[RULE_ALLOW_CUSTOM_HEROES] == 0);
+}
+
+// fork MP-0: the lobby of the multiplayer product: the Allow Custom Heroes box is unchecked and disabled (as RotWK's demo mode shows it), a toggle
+// that still arrives changes nothing, and the slots' hero combos stay disabled (RW 0x842A85)
+TEST_CASE("mp0 retail lobby: the multiplayer product's Rules tab shows Allow Custom Heroes off and disabled; the hero combos stay disabled")
+{
+	OPENBFME_REQUIRE_RETAIL(mount);
+	LobbyFx fx(mount, false);
+	fx.environment.multiplayerProduct = true;
+	fx.shell->push("Skirmish.apt");
+	fx.screen = dynamic_cast<AptSkirmish *>(fx.shell->top());
+	REQUIRE(fx.screen);
+	ruleLabels(fx.text);
+	openRulesTab(fx);
+	REQUIRE(fx.screen->setup());
+	CHECK_FALSE(fx.screen->setup()->customHeroesOffered());
+	GameWindow *box = fx.screen->ruleWindow(RULE_ALLOW_CUSTOM_HEROES);
+	REQUIRE(box);
+	CHECK_FALSE(GadgetCheckBoxIsChecked(box));
+	CHECK_FALSE(box->winGetEnabled());
+	GameWindow *ring = fx.screen->ruleWindow(RULE_ALLOW_RING_HEROES);
+	REQUIRE(ring);
+	CHECK(ring->winGetEnabled()); // the other rules stay the host's
+	GadgetCheckBoxToggle(box);
+	CHECK(fx.screen->setup()->info().rules[RULE_ALLOW_CUSTOM_HEROES] == 0);
+	REQUIRE(fx.screen->slotGadget(0, "Hero"));
+	CHECK_FALSE(fx.screen->slotGadget(0, "Hero")->winGetEnabled());
+}
+
 TEST_CASE("rules1 retail lobby: the Rules tab shows RotWK's rows (Initial Resources, Command Point Factor, Allow Custom Heroes, Allow Ring Heroes) and the "
 	  "Legendary Heroes row; the controls change the game setup, warn above 1X, Reset restores; the game starts with them")
 {
