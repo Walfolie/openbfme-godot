@@ -3535,7 +3535,7 @@ TEST_CASE("stableqa1 menu retail: a Stable build hides War of the Ring's Solo Pl
 // fork REMASTER-0: the remaster edition (ShellEnvironment::remasterEdition, OPENBFME_PRODUCT=remaster) in both menu styles: My Heroes is hidden, the Solo Play
 // list keeps the movie's own rows in their places (no campaign copies added) with War of the Ring and the campaigns on their disabled face, Skirmish
 // and Load Game stay usable, and every campaign, Create-a-Hero or War of the Ring command that still arrives sends no request and shows the box
-TEST_CASE("remaster0 menu retail: the remaster edition hides My Heroes, disables the campaign and War of the Ring rows and refuses their commands")
+TEST_CASE("remaster0 menu retail: the remaster edition hides My Heroes and the campaign and War of the Ring rows, closes both gaps and refuses their commands")
 {
 	OPENBFME_REQUIRE_RETAIL(mount);
 	retailtest::Mount *bfme2 = retailtest::bfme2Mount();
@@ -3609,21 +3609,54 @@ TEST_CASE("remaster0 menu retail: the remaster edition hides My Heroes, disables
 			REQUIRE_MESSAGE(sp.rows[usable], usable);
 			CHECK_MESSAGE(sp.rows[usable]->globallyVisible(), usable);
 			AptValue done;
-			CHECK_FALSE_MESSAGE(sp.rows[usable]->asSprite()->getMember("openbfmeDisabled", done), usable);
+			CHECK_FALSE_MESSAGE(sp.rows[usable]->asSprite()->getMember("openbfmeDisabled", done), usable); // shown on its own face
 		}
-		int disabled = 0;
+		int hidden = 0;
 		for (const char *off : { "WarOfTheRing", "Expansion1Campaign", "BonusCampaign", "GoodCampaign", "EvilCampaign" })
 		{
 			if (!sp.rows[off])
 			{
 				continue; // the other style's campaigns: not in this movie (no copies are made)
 			}
-			AptSpriteInst *row = sp.rows[off]->asSprite();
-			REQUIRE_MESSAGE(row, off);
-			CHECK_MESSAGE(row->frame >= row->labelFrame("_disable"), off); // tolerance: the row plays on from its "_disable" label
-			++disabled;
+			CHECK_FALSE_MESSAGE(sp.rows[off]->globallyVisible(), off);
+			++hidden;
 		}
-		CHECK(disabled == 3); // RotWK: War of the Ring, Angmar, Epilogue; BFME2: War of the Ring, Evil, Good
+		CHECK(hidden == 3); // RotWK: War of the Ring, Angmar, Epilogue; BFME2: War of the Ring, Evil, Good
+		// the list closes up: Load Game stays, Skirmish sits one row (35.5) above it, and the frame shrinks by the three rows. Against the full game's list
+		{
+			ShellFx fullFx(*movie, "");
+			SoloPlay full = openSoloPlay(fullFx);
+			REQUIRE(full.rows["LoadGame"]);
+			REQUIRE(full.rows["Skirmish"]);
+			CHECK(sp.rows["LoadGame"]->matrix.ty == full.rows["LoadGame"]->matrix.ty);
+			const float step = 35.5f;
+			CHECK(sp.rows["Skirmish"]->matrix.ty == doctest::Approx(full.rows["LoadGame"]->matrix.ty - step)); // tolerance: the float sum of the moves
+			// the frame (the tallest unnamed or NavFrame clip) keeps its bottom edge, still holds the rows above Load Game and is shorter than the full
+			// game's. (Not compared: the margin above the top row. The full game's list grows by its two added rows with updateExtraRows' stretch, which
+			// changes that margin; ours shrinks the top by exactly the hidden rows, so its margin is the movie's own)
+			auto frame = [](AptCharacterInst *nav, float (&bounds)[4]) {
+				float best = 0.0f;
+				for (AptCharacterInst *c : nav->asSprite()->children())
+				{
+					float b[4];
+					if (c->asSprite() && !c->asSprite()->childByName("bttn") && (c->instName().empty() || c->instName().rfind("NavFrame", 0) == 0) &&
+						WindowManager::stageBounds(*c, b) && b[3] - b[1] > best)
+					{
+						best = b[3] - b[1];
+						std::copy(b, b + 4, bounds);
+					}
+				}
+				return best > 0.0f;
+			};
+			float fullFrame[4], ourFrame[4], fullTop[4], ourTop[4];
+			REQUIRE(frame(full.nav, fullFrame));
+			REQUIRE(frame(sp.nav, ourFrame));
+			REQUIRE(WindowManager::stageBounds(*full.rows["Skirmish"], fullTop));
+			REQUIRE(WindowManager::stageBounds(*sp.rows["Skirmish"], ourTop));
+			CHECK(ourFrame[3] == doctest::Approx(fullFrame[3])); // tolerance: the float stretch keeps the bottom edge
+			CHECK(ourFrame[1] < ourTop[1]);                       // tolerance: an order, not a size: the frame's top is above the Skirmish row
+			CHECK(ourFrame[1] > fullFrame[1]);                    // tolerance: an order: the list is shorter than the full game's
+		}
 		for (const char *command : { "AptMainMenu::CreateAHero", "AptMainMenu::WarOfTheRing", "AptMainMenu::Expansion1Campaign",
 				 "AptMainMenu::BonusCampaign", "AptMainMenu::LoadCampaign", "AptMainMenu::ContinueCampaign", "AptMainMenu::GoodCampaign",
 				 "AptMainMenu::EvilCampaign" })

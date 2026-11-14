@@ -25,6 +25,7 @@
 #include "GameClient/GUI/Skirmish/LivingWorldShellInfo.h" // lane WOTR-1
 
 #include <algorithm>
+#include <set>
 #include <filesystem>
 
 namespace
@@ -634,19 +635,91 @@ void AptMainMenu::updateRemasterEdition()
 	{
 		return; // the Solo Play list is closed: its rows do not exist
 	}
-	// the rows keep their places (no gaps); each plays the movie's own "_disable" state once per opening, as the locked epilogue row does
-	for (const char *name : { "WarOfTheRing", "Expansion1Campaign", "BonusCampaign", "GoodCampaign", "EvilCampaign" })
+	compactSoloList(*nav);
+}
+
+// fork REMASTER-0 (owner 2026-11-14: the War of the Ring and campaign rows gone, not greyed): the Solo Play list keeps Skirmish and Load Game. The
+// other rows are not drawn and take no click, every row left moves down by the hidden rows below it (Skirmish lands right above Load Game), and the
+// list's frame loses the same height at its top (its bottom and its margins stay the movie's). MOVIE FACTS: both movies' rows sit
+// 35.5 apart upward from LoadGame (RotWK: Skirmish, WarOfTheRing, Expansion1Campaign, BonusCampaign, LoadGame; BFME2: Skirmish, WarOfTheRing,
+// EvilCampaign, GoodCampaign, LoadGame)
+void AptMainMenu::compactSoloList(AptSpriteInst &nav)
+{
+	std::vector<MovedClip> &moved = m_extraMoved; // the clips of the open list (cleared when it closes)
+	AptCharacterInst *load = nav.childByName("LoadGame");
+	if (!isRow(load))
 	{
-		AptCharacterInst *c = nav->childByName(name);
-		AptSpriteInst *row = isRow(c) ? c->asSprite() : nullptr;
-		const int disabled = row ? row->labelFrame("_disable") : -1;
-		AptValue done;
-		if (row && disabled >= 0 && !(row->getMember("openbfmeDisabled", done) && done.isBoolean() && done.asBool()))
+		moved.clear(); // the list is closed: its next opening makes new rows
+		return;
+	}
+	static const std::set<std::string> kHidden = { "WarOfTheRing", "Expansion1Campaign", "BonusCampaign", "GoodCampaign", "EvilCampaign" };
+	struct Row
+	{
+		AptCharacterInst *inst;
+		AptMatrix base;
+		bool hidden;
+	};
+	std::vector<Row> rows;
+	for (AptCharacterInst *c : nav.children())
+	{
+		if (isRow(c))
 		{
-			row->gotoFrame(disabled);
-			row->playing = true;
-			row->setMember("openbfmeDisabled", AptValue::boolean(true));
+			rows.push_back({ c, baseOf(moved, *c), kHidden.count(c->instName()) != 0 });
 		}
+	}
+	std::sort(rows.begin(), rows.end(), [](const Row &a, const Row &b) { return a.base.ty > b.base.ty; }); // the bottom row first
+	float step = 0.0f; // a row's height downward (35.5 in both movies)
+	for (size_t i = 0; i + 1 < rows.size(); ++i)
+	{
+		const float d = rows[i].base.ty - rows[i + 1].base.ty;
+		step = d > 0.0f && (step == 0.0f || d < step) ? d : step;
+	}
+	int hiddenBelow = 0;
+	for (const Row &r : rows)
+	{
+		if (r.hidden)
+		{
+			r.inst->visible = false;
+			++hiddenBelow;
+			continue;
+		}
+		AptMatrix to = r.base;
+		to.ty = r.base.ty + (float)hiddenBelow * step;
+		write(moved, *r.inst, r.base, to);
+	}
+	const float shrink = (float)hiddenBelow * step;
+	float cut = 0.0f, loadBottom = 0.0f; // Load Game's top (parent space): what lies above it moves down by `shrink`, what lies below stays
+	if (shrink == 0.0f || !parentYBounds(*load, baseOf(moved, *load), cut, loadBottom))
+	{
+		return;
+	}
+	// the frame pieces and the panel's hit area (MOVIE FACT: a strip over Load Game, so it stays): a piece above the cut moves down, a piece below it
+	// stays, a piece across it keeps its bottom edge and its top moves down (its margins above the top row are the movie's)
+	for (AptCharacterInst *c : nav.children())
+	{
+		if (!isFramePiece(c))
+		{
+			continue;
+		}
+		const AptMatrix base = baseOf(moved, *c);
+		float y0 = 0, y1 = 0;
+		if (!parentYBounds(*c, base, y0, y1) || y0 >= cut)
+		{
+			continue;
+		}
+		AptMatrix to = base;
+		const float k = (y1 - (y0 + shrink)) / (y1 - y0);
+		if (y1 <= cut || k <= 0.0f)
+		{
+			to.ty = base.ty + shrink;
+		}
+		else
+		{
+			to.b = base.b * k;
+			to.d = base.d * k;
+			to.ty = y1 + (base.ty - y1) * k;
+		}
+		write(moved, *c, base, to);
 	}
 }
 

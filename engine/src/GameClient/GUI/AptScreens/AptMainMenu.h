@@ -148,4 +148,5 @@ private:
 	float m_barSlot = 0.0f, m_barGoneX = 0.0f;
 	void updateExtraRows();
 	void closeBarGap(AptSpriteInst &root); // fork REMASTER-0
+	void compactSoloList(AptSpriteInst &nav); // fork REMASTER-0: Skirmish and Load Game only
 };
