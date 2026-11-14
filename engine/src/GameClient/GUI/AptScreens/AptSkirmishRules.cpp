@@ -323,7 +323,7 @@ void AptSkirmish::populateRuleChecks()
 		}
 		else if (cur->id == RULE_ALLOW_CUSTOM_HEROES && m_setup && !m_setup->customHeroesOffered())
 		{
-			m_ruleStates[(std::size_t)cur->id] = 2; // fork MP-0: the multiplayer product, as the demo mode shows it
+			m_ruleStates[(std::size_t)cur->id] = 2; // fork REMASTER-0: the remaster edition, as the demo mode shows it
 			window->winEnable(false);
 		}
 	}

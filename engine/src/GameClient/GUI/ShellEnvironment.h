@@ -107,7 +107,7 @@ struct ShellEnvironment
 	// (BuildVersion::isStableChannel): the main menu's War of the Ring row is hidden and refused, the LAN lobby's War of the Ring page says it is a
 	// Nightly feature and creates no game. Not retail: an OpenBFME release switch
 	bool warOfTheRingOffered = true;
-	// fork MP-0: the multiplayer product (OPENBFME_PRODUCT=mp, game.gd's shell config "product"): the main menu's campaign rows and War of the Ring
+	// fork REMASTER-0: the remaster edition (OPENBFME_PRODUCT=remaster, game.gd's shell config "product"): the main menu's campaign rows and War of the Ring
 	// show their disabled face, My Heroes (Create-a-Hero) is hidden, and their commands are refused with a box. Hidden, not deleted. Not retail
-	bool multiplayerProduct = false;
+	bool remasterEdition = false;
 };

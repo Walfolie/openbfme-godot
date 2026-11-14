@@ -1914,9 +1914,9 @@ Dictionary AptMenuPlayer::boot_shell(const Ref<RetailFileSystem> &fs, Object *wo
 	// lane STABLEQA-1: a Stable channel build offers no War of the Ring yet; "stable_channel" (game.gd --stable-channel, the tests) hides it in any
 	// build, nothing shows it in a Stable one
 	sm->environment.warOfTheRingOffered = !BuildVersion::isStableChannel(BuildVersion::kVersion) && !(config.has("stable_channel") && bool(config["stable_channel"]));
-	// fork MP-0: "product" "mp" (game.gd: OPENBFME_PRODUCT) is the multiplayer product; War of the Ring is not offered there either (the LAN lobby's page)
-	sm->environment.multiplayerProduct = config.has("product") && String(config["product"]) == "mp";
-	if (sm->environment.multiplayerProduct)
+	// fork REMASTER-0: "product" "remaster" (game.gd: OPENBFME_PRODUCT) is the remaster edition; War of the Ring is not offered there either (the LAN lobby's page)
+	sm->environment.remasterEdition = config.has("product") && String(config["product"]) == "remaster";
+	if (sm->environment.remasterEdition)
 	{
 		sm->environment.warOfTheRingOffered = false;
 	}

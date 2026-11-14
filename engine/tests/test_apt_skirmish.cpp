@@ -1790,9 +1790,9 @@ TEST_CASE("rules1 setup: the Rules tab model: the mode's defaults, the rows' tex
 	CHECK(m.game.startingCash == -1);
 }
 
-// fork MP-0: the multiplayer product offers no Create-a-Hero. The setup holds AllowCustomHeroes at 0 through every path that sets the rules (the
-// defaults, a click, Reset, the strategic mode, the profile's kept game) and no slot keeps a hero; the full product keeps RotWK's default (on)
-TEST_CASE("mp0 setup: the multiplayer product holds AllowCustomHeroes at 0 and drops every slot's hero; the full product keeps the default")
+// fork REMASTER-0: the remaster edition offers no Create-a-Hero. The setup holds AllowCustomHeroes at 0 through every path that sets the rules (the
+// defaults, a click, Reset, the strategic mode, the profile's kept game) and no slot keeps a hero; the full game keeps RotWK's default (on)
+TEST_CASE("remaster0 setup: the remaster edition holds AllowCustomHeroes at 0 and drops every slot's hero; the full game keeps the default")
 {
 	FakeSetup src;
 	MapGameText text;
@@ -1820,7 +1820,7 @@ TEST_CASE("mp0 setup: the multiplayer product holds AllowCustomHeroes at 0 and d
 	setup.setStrategicMode(true);
 	CHECK_FALSE(setup.info().customHeroesAllowed());
 	setup.setStrategicMode(false);
-	// a game the full product kept with the profile (rule 0 on, a hero in slot 0)
+	// a game the full game kept with the profile (rule 0 on, a hero in slot 0)
 	SkirmishGameInfo kept = setup.info();
 	kept.rules[RULE_ALLOW_CUSTOM_HEROES] = 1;
 	kept.slots[0].hasCreateAHero = true;
@@ -1830,13 +1830,13 @@ TEST_CASE("mp0 setup: the multiplayer product holds AllowCustomHeroes at 0 and d
 	CHECK(setup.makeNewGameMessage().game.rules[RULE_ALLOW_CUSTOM_HEROES] == 0);
 }
 
-// fork MP-0: the lobby of the multiplayer product: the Allow Custom Heroes box is unchecked and disabled (as RotWK's demo mode shows it), a toggle
+// fork REMASTER-0: the lobby of the remaster edition: the Allow Custom Heroes box is unchecked and disabled (as RotWK's demo mode shows it), a toggle
 // that still arrives changes nothing, and the slots' hero combos stay disabled (RW 0x842A85)
-TEST_CASE("mp0 retail lobby: the multiplayer product's Rules tab shows Allow Custom Heroes off and disabled; the hero combos stay disabled")
+TEST_CASE("remaster0 retail lobby: the remaster edition's Rules tab shows Allow Custom Heroes off and disabled; the hero combos stay disabled")
 {
 	OPENBFME_REQUIRE_RETAIL(mount);
 	LobbyFx fx(mount, false);
-	fx.environment.multiplayerProduct = true;
+	fx.environment.remasterEdition = true;
 	fx.shell->push("Skirmish.apt");
 	fx.screen = dynamic_cast<AptSkirmish *>(fx.shell->top());
 	REQUIRE(fx.screen);

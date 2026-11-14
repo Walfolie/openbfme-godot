@@ -59,8 +59,8 @@ public:
 	AptMessageBox *unavailableBox() { return m_box.get(); }
 	// lane STABLEQA-1: the box's text when a Stable build refuses War of the Ring (ShellEnvironment::warOfTheRingOffered)
 	static const char *const kWarOfTheRingStable;
-	// fork MP-0: the box's text when the multiplayer product refuses a campaign, Create-a-Hero or War of the Ring (ShellEnvironment::multiplayerProduct)
-	static const char *const kMultiplayerProduct;
+	// fork REMASTER-0: the box's text when the remaster edition refuses a campaign, Create-a-Hero or War of the Ring (ShellEnvironment::remasterEdition)
+	static const char *const kRemasterEdition;
 
 	// lane UI-4: the credits page (TARGET FACTS, RotWK game.dat, caveat S-001; BFME2 decomp AptMainMenuCallbacks.cpp, tier A for both):
 	// - AptMainMenu::Credits (RW 0x91B5E9): the old roll deleted, a new CreditsManager (GameClient/Credits.h) loaded (vslot 2) and started (vslot 1)
@@ -115,10 +115,10 @@ private:
 	void exitCredits();
 	void showWarOfTheRing();
 	bool warOfTheRingHidden() const; // lane STABLEQA-1: the environment does not offer War of the Ring (a Stable build)
-	bool multiplayerProduct() const; // fork MP-0: ShellEnvironment::multiplayerProduct
-	// fork MP-0: in the multiplayer product, `command` is refused (noted, the box shown): true. Otherwise false and nothing happens
+	bool remasterEdition() const; // fork REMASTER-0: ShellEnvironment::remasterEdition
+	// fork REMASTER-0: in the remaster edition, `command` is refused (noted, the box shown): true. Otherwise false and nothing happens
 	bool refusedByProduct(const std::string &command);
-	void updateMultiplayerProduct(); // fork MP-0: My Heroes hidden, the single player rows on their disabled face (each update)
+	void updateRemasterEdition(); // fork REMASTER-0: My Heroes hidden, the single player rows on their disabled face (each update)
 	void showUnavailableBox(const std::string &text); // the Ok box whose Ok gives the menu OnFocus("1") (screenUnavailable)
 
 	ShellServices &m_services;

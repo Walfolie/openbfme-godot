@@ -3532,10 +3532,10 @@ TEST_CASE("stableqa1 menu retail: a Stable build hides War of the Ring's Solo Pl
 	}
 }
 
-// fork MP-0: the multiplayer product (ShellEnvironment::multiplayerProduct, OPENBFME_PRODUCT=mp) in both menu styles: My Heroes is hidden, the Solo Play
+// fork REMASTER-0: the remaster edition (ShellEnvironment::remasterEdition, OPENBFME_PRODUCT=remaster) in both menu styles: My Heroes is hidden, the Solo Play
 // list keeps the movie's own rows in their places (no campaign copies added) with War of the Ring and the campaigns on their disabled face, Skirmish
 // and Load Game stay usable, and every campaign, Create-a-Hero or War of the Ring command that still arrives sends no request and shows the box
-TEST_CASE("mp0 menu retail: the multiplayer product hides My Heroes, disables the campaign and War of the Ring rows and refuses their commands")
+TEST_CASE("remaster0 menu retail: the remaster edition hides My Heroes, disables the campaign and War of the Ring rows and refuses their commands")
 {
 	OPENBFME_REQUIRE_RETAIL(mount);
 	retailtest::Mount *bfme2 = retailtest::bfme2Mount();
@@ -3547,7 +3547,7 @@ TEST_CASE("mp0 menu retail: the multiplayer product hides My Heroes, disables th
 		{
 			// the bar as the menu shows it (the open Solo Play list takes the bar's clips off the stage)
 			ShellFx bar(*movie, "");
-			bar.environment.multiplayerProduct = true;
+			bar.environment.remasterEdition = true;
 			bar.tick(2);
 			bar.shell->push("MainMenu.apt");
 			bar.tick(10);
@@ -3568,7 +3568,7 @@ TEST_CASE("mp0 menu retail: the multiplayer product hides My Heroes, disables th
 			}
 		}
 		ShellFx fx(*movie, "");
-		fx.environment.multiplayerProduct = true;
+		fx.environment.remasterEdition = true;
 		fx.environment.warOfTheRingOffered = false; // as GodotAptPlayer sets it for the product
 		SoloPlay sp = openSoloPlay(fx);
 		auto *menu = dynamic_cast<AptMainMenu *>(fx.shell->top());

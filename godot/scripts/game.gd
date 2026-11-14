@@ -550,7 +550,7 @@ var _menu1_walk := "" # lane MENU-1: --menu1-walk=DIR (scripts/menu1_walk.gd)
 var _menu1_walk_on := false
 var _menustyle_check := false
 var _stable_channel := false # lane STABLEQA-1: --stable-channel: the menus as a Stable build shows them (no War of the Ring) in any build
-var _product := OS.get_environment("OPENBFME_PRODUCT") # fork MP-0: "mp" = the multiplayer product (--product=<p> overrides); "" the full game
+var _product := OS.get_environment("OPENBFME_PRODUCT") # fork REMASTER-0: "remaster" = the remaster edition (--product=<p> overrides); "" the full game
 var _shellfix1_check := false # lane SHELLFIX-1: --shellfix1-check (scripts/shellfix1_check.gd)
 var _shellfix1_game := false  # lane SHELLFIX-1: --shellfix1-game (with --auto)
 var _shellfix1_runner: RefCounted
@@ -1495,7 +1495,8 @@ func _boot() -> void:
 	if _stable_channel:
 		shell_config["stable_channel"] = true # lane STABLEQA-1 (AptMenuPlayer: a Stable build hides War of the Ring by itself)
 	if not _product.is_empty():
-		shell_config["product"] = _product # fork MP-0: "mp" hides the campaigns, Create-a-Hero and War of the Ring (ShellEnvironment::multiplayerProduct)
+		print("GAME product: %s" % _product) # fork REMASTER-0: which edition ran is in every log
+		shell_config["product"] = _product # fork REMASTER-0: "remaster" hides the campaigns, Create-a-Hero and War of the Ring (ShellEnvironment::remasterEdition)
 	if _scripted_run():
 		# lane MENU-1: a scripted run never reads or writes the player's Skirmish.ini (the profiles): a fresh file of its own, so the first visit of
 		# Skirmish always asks for a profile as the scripts expect

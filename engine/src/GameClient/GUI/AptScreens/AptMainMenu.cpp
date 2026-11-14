@@ -135,8 +135,8 @@ const UnavailableScreen *unavailableRow(const std::string &action)
 
 const char *const AptMainMenu::kWarOfTheRingStable =
 	"War of the Ring is not in the Stable version yet: it is being tested in the Nightly version (OpenBFME Launcher: Settings, Channel).";
-const char *const AptMainMenu::kMultiplayerProduct =
-	"This is the multiplayer edition of OpenBFME: the campaigns, Create-a-Hero and War of the Ring are not part of it. Skirmish, LAN and Online are.";
+const char *const AptMainMenu::kRemasterEdition =
+	"This is OpenBFME Remastered: the campaigns, Create-a-Hero and War of the Ring are not part of it. Skirmish, LAN and Online are.";
 
 std::string AptMainMenu::unavailableScreenName(const std::string &action)
 {
@@ -543,25 +543,25 @@ void AptMainMenu::updateExtraRows()
 	}
 }
 
-bool AptMainMenu::multiplayerProduct() const
+bool AptMainMenu::remasterEdition() const
 {
 	const ShellEnvironment *environment = m_environment ? m_environment : m_env;
-	return environment && environment->multiplayerProduct;
+	return environment && environment->remasterEdition;
 }
 
 bool AptMainMenu::refusedByProduct(const std::string &command)
 {
-	if (!multiplayerProduct())
+	if (!remasterEdition())
 	{
 		return false;
 	}
 	// a click that still arrives (a script, a mod's menu, a row's face the movie re-enabled) sends no request; the box's Ok gives the menu back
-	windows().note("product-mp-refused", command + ": refused, the multiplayer product offers no campaign, Create-a-Hero or War of the Ring");
-	showUnavailableBox(kMultiplayerProduct);
+	windows().note("product-remaster-refused", command + ": refused, the remaster edition offers no campaign, Create-a-Hero or War of the Ring");
+	showUnavailableBox(kRemasterEdition);
 	return true;
 }
 
-void AptMainMenu::updateMultiplayerProduct()
+void AptMainMenu::updateRemasterEdition()
 {
 	AptSpriteInst *root = level() >= 0 ? windows().apt().level(level()) : nullptr;
 	if (!root)
@@ -600,9 +600,9 @@ void AptMainMenu::updateMultiplayerProduct()
 
 void AptMainMenu::update()
 {
-	if (multiplayerProduct())
+	if (remasterEdition())
 	{
-		updateMultiplayerProduct(); // fork MP-0: no extra campaign rows either
+		updateRemasterEdition(); // fork REMASTER-0: no extra campaign rows either
 	}
 	else
 	{
@@ -834,7 +834,7 @@ void AptMainMenu::registerAll()
 	{
 		const ShellAction action = row.action;
 		const std::string name = row.name;
-		// fork MP-0: the campaign requests are refused in the multiplayer product
+		// fork REMASTER-0: the campaign requests are refused in the remaster edition
 		const bool singlePlayer = action == ShellAction::LoadCampaign || action == ShellAction::ContinueCampaign ||
 			action == ShellAction::Expansion1Campaign || action == ShellAction::BonusCampaign;
 		registerCommand(name, [this, action, name, singlePlayer](const std::string &argument) {
