@@ -3986,7 +3986,8 @@ func _auto_lobby_and_start() -> bool:
 
 func _auto_report() -> void:
 	var gs: Dictionary = _world.get_stats()
-	print("GAME ran %.1f s: logic frame %d, %d objects, hash %d" % [_advance, gs.frame, gs.objects, _world.get_state_hash()])
+	# fork: a game that ended before --advance ran out (the score screen) has no stats left: -1 / 0, not a script error that hangs the run
+	print("GAME ran %.1f s: logic frame %d, %d objects, hash %d" % [_advance, gs.get("frame", -1), gs.get("objects", 0), _world.get_state_hash()])
 	var shell_report: Dictionary = _shell.get_shell_report()
 	print("GAME shell notes: ", JSON.stringify(shell_report.get("notes", {})))
 	for e in shell_report.get("errors", []):
