@@ -3532,6 +3532,90 @@ TEST_CASE("stableqa1 menu retail: a Stable build hides War of the Ring's Solo Pl
 	}
 }
 
+// fork MP-0: the multiplayer product (ShellEnvironment::multiplayerProduct, OPENBFME_PRODUCT=mp) in both menu styles: My Heroes is hidden, the Solo Play
+// list keeps the movie's own rows in their places (no campaign copies added) with War of the Ring and the campaigns on their disabled face, Skirmish
+// and Load Game stay usable, and every campaign, Create-a-Hero or War of the Ring command that still arrives sends no request and shows the box
+TEST_CASE("mp0 menu retail: the multiplayer product hides My Heroes, disables the campaign and War of the Ring rows and refuses their commands")
+{
+	OPENBFME_REQUIRE_RETAIL(mount);
+	retailtest::Mount *bfme2 = retailtest::bfme2Mount();
+	REQUIRE(bfme2);
+	REQUIRE_MESSAGE(bfme2->fs, bfme2->error);
+	AptRetail bfme2Only{ *bfme2->fs };
+	for (AptRetail *movie : { &mount, &bfme2Only })
+	{
+		{
+			// the bar as the menu shows it (the open Solo Play list takes the bar's clips off the stage)
+			ShellFx bar(*movie, "");
+			bar.environment.multiplayerProduct = true;
+			bar.tick(2);
+			bar.shell->push("MainMenu.apt");
+			bar.tick(10);
+			const int level = bar.shell->top()->level();
+			std::string error;
+			REQUIRE_MESSAGE(bar.wm->invokeAS(level, "ShowMainMenu", {}, nullptr, &error), error);
+			bar.tick(90);
+			AptSpriteInst *root = bar.wm->apt().level(level);
+			REQUIRE(root);
+			AptCharacterInst *heroes = bar.wm->apt().resolvePath(root, movie == &mount ? "MyHeroes" : "MyHeores"); // BFME2 1.06's own spelling
+			REQUIRE(heroes);
+			CHECK_FALSE(heroes->globallyVisible());
+			for (const char *nav : { "SoloPlayNav", "MultiPlayNav", "OptionsNav", "QuitMainMenu" })
+			{
+				AptCharacterInst *c = bar.wm->apt().resolvePath(root, nav);
+				REQUIRE_MESSAGE(c, nav);
+				CHECK_MESSAGE(c->globallyVisible(), nav);
+			}
+		}
+		ShellFx fx(*movie, "");
+		fx.environment.multiplayerProduct = true;
+		fx.environment.warOfTheRingOffered = false; // as GodotAptPlayer sets it for the product
+		SoloPlay sp = openSoloPlay(fx);
+		auto *menu = dynamic_cast<AptMainMenu *>(fx.shell->top());
+		REQUIRE(menu);
+		CHECK(menu->extraRows().rowsAdded == 0);
+		for (const char *usable : { "Skirmish", "LoadGame" })
+		{
+			REQUIRE_MESSAGE(sp.rows[usable], usable);
+			CHECK_MESSAGE(sp.rows[usable]->globallyVisible(), usable);
+			AptValue done;
+			CHECK_FALSE_MESSAGE(sp.rows[usable]->asSprite()->getMember("openbfmeDisabled", done), usable);
+		}
+		int disabled = 0;
+		for (const char *off : { "WarOfTheRing", "Expansion1Campaign", "BonusCampaign", "GoodCampaign", "EvilCampaign" })
+		{
+			if (!sp.rows[off])
+			{
+				continue; // the other style's campaigns: not in this movie (no copies are made)
+			}
+			AptSpriteInst *row = sp.rows[off]->asSprite();
+			REQUIRE_MESSAGE(row, off);
+			CHECK_MESSAGE(row->frame >= row->labelFrame("_disable"), off); // tolerance: the row plays on from its "_disable" label
+			++disabled;
+		}
+		CHECK(disabled == 3); // RotWK: War of the Ring, Angmar, Epilogue; BFME2: War of the Ring, Evil, Good
+		for (const char *command : { "AptMainMenu::CreateAHero", "AptMainMenu::WarOfTheRing", "AptMainMenu::Expansion1Campaign",
+				 "AptMainMenu::BonusCampaign", "AptMainMenu::LoadCampaign", "AptMainMenu::ContinueCampaign", "AptMainMenu::GoodCampaign",
+				 "AptMainMenu::EvilCampaign" })
+		{
+			fx.wm->fscommand(command, "");
+			fx.tick(5);
+			CHECK_MESSAGE(menu->unavailableBox() != nullptr, command);
+		}
+		for (ShellAction a : { ShellAction::CreateAHero, ShellAction::WarOfTheRing, ShellAction::Expansion1Campaign, ShellAction::BonusCampaign,
+				 ShellAction::LoadCampaign, ShellAction::ContinueCampaign })
+		{
+			CHECK(lastRequest(fx, a) == nullptr);
+		}
+		CHECK(fx.shell->findScreenByFilename("CreateAHero.apt") == nullptr);
+		CHECK(fx.shell->findScreenByFilename("Skirmish.apt") == nullptr);
+		// Skirmish still opens
+		fx.wm->fscommand("AptMainMenu::Skirmish", "");
+		fx.tick(5);
+		CHECK(fx.shell->findScreenByFilename("Skirmish.apt") != nullptr);
+	}
+}
+
 // lane MENUSND-1: the bottom bar of the OpenBFME menu (the Options screen as the game opens it) is the movie's own CANCEL / RESET TO DEFAULTS / ACCEPT, whose
 // click the page takes (AptOptionsScreen::mouseFilter). RotWK plays the button's click on the press: MenuExport.apt's GenericButton goes to its `_down`
 // frame (button action 4), which calls _root.PlaySound("Gui_ShellMapSelect") (FSCommand PlaySound, RW 0x815772); its own click (OnButtonClick) is the

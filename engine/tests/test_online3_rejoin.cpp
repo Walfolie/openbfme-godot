@@ -2421,6 +2421,16 @@ TEST_CASE("onlineux1 r2 (Sol 1) retail: a rejoin that fails before it is live le
 	REQUIRE(relaySocket.bind(0x7F000001u, 0, &error));
 	// the relay's log of the game: the slot's first incarnation only (no REJOINED of this client: the rejoin fails once the log is read)
 	const auto dir = tempDir("ux1_unjoined");
+	// removed once the relay below is destroyed: its game never ends, so its log stays open, and Windows cannot delete an open file
+	struct RemoveDir
+	{
+		std::filesystem::path path;
+		~RemoveDir()
+		{
+			std::error_code ec;
+			std::filesystem::remove_all(path, ec);
+		}
+	} removeDir{dir};
 	RelayCore::Options ro;
 	ro.keys = testRing();
 	ro.logDir = dir.string();
@@ -2525,7 +2535,6 @@ TEST_CASE("onlineux1 r2 (Sol 1) retail: a rejoin that fails before it is live le
 	// before r2: Network::leave announced frames 0 .. the catch-up's execution frame and a PLAYERLEAVE, all as DATA to the relay
 	CHECK_MESSAGE(dataAfterFinish == 0, "frame counts / PLAYERLEAVE sent by the failed rejoin's finish: " << dataAfterFinish << " (during the rejoin: " << dataDuringRejoin << ")");
 	CHECK(dataDuringRejoin == 0); // a rejoining incarnation announces no frames
-	std::filesystem::remove_all(dir);
 }
 
 TEST_CASE("online3 retail: the catch-up runs a game's frames from its command log and reaches the same state, the CRCs compared on the way; a wrong "

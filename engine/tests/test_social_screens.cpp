@@ -394,10 +394,8 @@ TEST_CASE("onlinemenu1 retail: the Messenger shows a friend's status in RotWK's 
 	ShellEnvironment environment;
 	GameTextTableSource text;
 	{
-		std::vector<std::uint8_t> bytes;
 		std::string error;
-		REQUIRE_MESSAGE(retail.fs.readFile("data/lotr.str", bytes, &error), error);
-		REQUIRE_MESSAGE(text.table.parse(bytes, &error), error);
+		REQUIRE_MESSAGE(text.table.loadRetail(retail.fs, &error), error); // data/lotr.str, or a non-English install's lotr.csf
 	}
 	environment.gameText = &text;
 	OnlineLobbyClient::Options options = shellSocialOptions(8, 8);

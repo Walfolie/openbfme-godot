@@ -54,11 +54,9 @@ TEST_CASE("menufix1 version: Version:Format2's %02d keeps its width (RotWK 2.01 
 TEST_CASE("menufix1 version retail: the 2.01 string file's Version:Format2 gives Version 2.01")
 {
 	OPENBFME_REQUIRE_RETAIL(mount);
-	std::vector<std::uint8_t> str;
 	std::string error;
-	REQUIRE_MESSAGE(mount.fs.readFile("data/lotr.str", str, &error), error);
 	GameTextTableSource text;
-	REQUIRE_MESSAGE(text.table.parse(str, &error), error);
+	REQUIRE_MESSAGE(text.table.loadRetail(mount.fs, &error), error); // data/lotr.str, or a non-English install's lotr.csf
 	CHECK(AptOptionsScreen::versionText(&text) == u"Version 2.01");
 }
 

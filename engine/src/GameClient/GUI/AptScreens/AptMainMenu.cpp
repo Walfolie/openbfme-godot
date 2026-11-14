@@ -135,6 +135,8 @@ const UnavailableScreen *unavailableRow(const std::string &action)
 
 const char *const AptMainMenu::kWarOfTheRingStable =
 	"War of the Ring is not in the Stable version yet: it is being tested in the Nightly version (OpenBFME Launcher: Settings, Channel).";
+const char *const AptMainMenu::kMultiplayerProduct =
+	"This is the multiplayer edition of OpenBFME: the campaigns, Create-a-Hero and War of the Ring are not part of it. Skirmish, LAN and Online are.";
 
 std::string AptMainMenu::unavailableScreenName(const std::string &action)
 {
@@ -541,9 +543,71 @@ void AptMainMenu::updateExtraRows()
 	}
 }
 
+bool AptMainMenu::multiplayerProduct() const
+{
+	const ShellEnvironment *environment = m_environment ? m_environment : m_env;
+	return environment && environment->multiplayerProduct;
+}
+
+bool AptMainMenu::refusedByProduct(const std::string &command)
+{
+	if (!multiplayerProduct())
+	{
+		return false;
+	}
+	// a click that still arrives (a script, a mod's menu, a row's face the movie re-enabled) sends no request; the box's Ok gives the menu back
+	windows().note("product-mp-refused", command + ": refused, the multiplayer product offers no campaign, Create-a-Hero or War of the Ring");
+	showUnavailableBox(kMultiplayerProduct);
+	return true;
+}
+
+void AptMainMenu::updateMultiplayerProduct()
+{
+	AptSpriteInst *root = level() >= 0 ? windows().apt().level(level()) : nullptr;
+	if (!root)
+	{
+		return;
+	}
+	// the bar's Create-a-Hero entry: not drawn and takes no click. MOVIE FACT: RotWK's MainMenu.apt names it MyHeroes, BFME2 1.06's MyHeores
+	for (const char *name : { "MyHeroes", "MyHeores" })
+	{
+		if (AptCharacterInst *heroes = windows().apt().resolvePath(root, name))
+		{
+			heroes->visible = false;
+		}
+	}
+	AptCharacterInst *navInst = root->childByName("SoloPlayNav");
+	AptSpriteInst *nav = navInst ? navInst->asSprite() : nullptr;
+	if (!nav)
+	{
+		return; // the Solo Play list is closed: its rows do not exist
+	}
+	// the rows keep their places (no gaps); each plays the movie's own "_disable" state once per opening, as the locked epilogue row does
+	for (const char *name : { "WarOfTheRing", "Expansion1Campaign", "BonusCampaign", "GoodCampaign", "EvilCampaign" })
+	{
+		AptCharacterInst *c = nav->childByName(name);
+		AptSpriteInst *row = isRow(c) ? c->asSprite() : nullptr;
+		const int disabled = row ? row->labelFrame("_disable") : -1;
+		AptValue done;
+		if (row && disabled >= 0 && !(row->getMember("openbfmeDisabled", done) && done.isBoolean() && done.asBool()))
+		{
+			row->gotoFrame(disabled);
+			row->playing = true;
+			row->setMember("openbfmeDisabled", AptValue::boolean(true));
+		}
+	}
+}
+
 void AptMainMenu::update()
 {
-	updateExtraRows(); // lane BFME2CAMP1
+	if (multiplayerProduct())
+	{
+		updateMultiplayerProduct(); // fork MP-0: no extra campaign rows either
+	}
+	else
+	{
+		updateExtraRows(); // lane BFME2CAMP1
+	}
 	if (m_state == 4 && m_credits)
 	{
 		// RW 0x91C631: the roll's update each engine frame; the engine is limited to 100 frames a second while it rolls (RW 0x91B6DA), so the port
@@ -678,6 +742,10 @@ void AptMainMenu::showWarOfTheRing()
 	// lane WOTR-1.  AptMainMenu::WarOfTheRing (RW 0x91AFE4) sets the transition state 9 / action 8; the menu update (RW 0x91C2FC case 8) runs the shell clean-up
 	// RW 0x7792BC (not ported: the clean-up of a game that is not running here) and RW 0x9282E3(1): the strategic flag RW 0xDB6BF0, then Skirmish.apt unless
 	// it exists.  The menu's fade-out before the action (state 9) is not modelled: the push waits for the shell's own transition.
+	if (refusedByProduct("AptMainMenu::WarOfTheRing"))
+	{
+		return;
+	}
 	if (warOfTheRingHidden())
 	{
 		// lane STABLEQA-1: a Stable build hides the row (updateExtraRows); a click that still arrives (a script, a mod's menu) is refused with the box,
@@ -722,8 +790,14 @@ void AptMainMenu::registerAll()
 		showSkirmish();
 	});
 	registerCommand("AptMainMenu::WarOfTheRing", [this](const std::string &) { showWarOfTheRing(); }); // lane WOTR-1
-	registerCommand("AptMainMenu::GoodCampaign", [this](const std::string &argument) { request(ShellAction::LoadCampaign, "bfme2:good:" + argument); });
-	registerCommand("AptMainMenu::EvilCampaign", [this](const std::string &argument) { request(ShellAction::LoadCampaign, "bfme2:evil:" + argument); });
+	registerCommand("AptMainMenu::GoodCampaign", [this](const std::string &argument) {
+		if (!refusedByProduct("AptMainMenu::GoodCampaign"))
+			request(ShellAction::LoadCampaign, "bfme2:good:" + argument);
+	});
+	registerCommand("AptMainMenu::EvilCampaign", [this](const std::string &argument) {
+		if (!refusedByProduct("AptMainMenu::EvilCampaign"))
+			request(ShellAction::LoadCampaign, "bfme2:evil:" + argument);
+	});
 	registerCommand("AptMainMenu::Options", [this](const std::string &argument) {
 		// MainMenu calls GameCode('Options', true|false): advanced or basic (spec 1.10). Lane FB7-1: the menu's state 9 opens it with
 		// RW 0x91ED91(0, 1, 1, advanced) (RW 0x91C37E .. 0x91C38A): no network, the resolution and the advanced options allowed
@@ -733,6 +807,10 @@ void AptMainMenu::registerAll()
 	registerCommand("AptMainMenu::CreateAHero", [this](const std::string &argument) {
 		// lane CAH-1, RW 0x91A018: CreateAHero.apt is pushed and the map Maps\CreateAHero\CreateAHero.map is started behind it (mode 7): the request
 		// is the device's cue to start that map (the 3D view of the builder)
+		if (refusedByProduct("AptMainMenu::CreateAHero"))
+		{
+			return;
+		}
 		if (!shell().findScreenByFilename("CreateAHero.apt"))
 		{
 			shell().push("CreateAHero.apt", false);
@@ -756,7 +834,14 @@ void AptMainMenu::registerAll()
 	{
 		const ShellAction action = row.action;
 		const std::string name = row.name;
-		registerCommand(name, [this, action, name](const std::string &argument) {
+		// fork MP-0: the campaign requests are refused in the multiplayer product
+		const bool singlePlayer = action == ShellAction::LoadCampaign || action == ShellAction::ContinueCampaign ||
+			action == ShellAction::Expansion1Campaign || action == ShellAction::BonusCampaign;
+		registerCommand(name, [this, action, name, singlePlayer](const std::string &argument) {
+			if (singlePlayer && refusedByProduct(name))
+			{
+				return;
+			}
 			request(action, argument);
 			windows().note("unported-command", name + (argument.empty() ? std::string() : "(" + argument + ")") + ": the request is the whole behaviour so far [S-175]");
 		});

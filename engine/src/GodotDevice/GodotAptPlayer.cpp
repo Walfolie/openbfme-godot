@@ -1914,6 +1914,12 @@ Dictionary AptMenuPlayer::boot_shell(const Ref<RetailFileSystem> &fs, Object *wo
 	// lane STABLEQA-1: a Stable channel build offers no War of the Ring yet; "stable_channel" (game.gd --stable-channel, the tests) hides it in any
 	// build, nothing shows it in a Stable one
 	sm->environment.warOfTheRingOffered = !BuildVersion::isStableChannel(BuildVersion::kVersion) && !(config.has("stable_channel") && bool(config["stable_channel"]));
+	// fork MP-0: "product" "mp" (game.gd: OPENBFME_PRODUCT) is the multiplayer product; War of the Ring is not offered there either (the LAN lobby's page)
+	sm->environment.multiplayerProduct = config.has("product") && String(config["product"]) == "mp";
+	if (sm->environment.multiplayerProduct)
+	{
+		sm->environment.warOfTheRingOffered = false;
+	}
 	// lane OPTS-4: the saved volumes are in effect from the start, as ZH's AudioManager::init takes them from OptionPreferences (DONOR; RotWK's reader
 	// is RW 0x6E5FB3, its caller at start was not read: INFERENCE, S-4510). Before, the AudioSettings defaults played until the Options screen's
 	// ACCEPT or CANCEL, and CANCEL changed the volume. Without an installed audio manager (a shell viewer) nothing is applied, and the report says so

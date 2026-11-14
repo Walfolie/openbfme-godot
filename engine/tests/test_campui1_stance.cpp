@@ -348,10 +348,8 @@ TEST_CASE("campui1 stance retail: hovering a radial item shows the toggle's Text
 	GameTextTableSource text;
 	MappedImageCollection mapped;
 	INIEnvironment imageEnv;
-	std::vector<std::uint8_t> bytes;
 	std::string error;
-	REQUIRE_MESSAGE(s.mount->fs->readFile("data/lotr.str", bytes, &error), error);
-	REQUIRE_MESSAGE(text.table.parse(bytes, &error), error);
+	REQUIRE_MESSAGE(text.table.loadRetail(*s.mount->fs, &error), error); // data/lotr.str, or a non-English install's lotr.csf
 	imageEnv.fileSystem = s.mount->fs.get();
 	mapped.registerBlocks(imageEnv.blocks);
 	INI ini(imageEnv);

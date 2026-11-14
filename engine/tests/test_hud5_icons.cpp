@@ -210,7 +210,15 @@ TEST_CASE("hud5 icons retail: a newly produced unit's construction sentinel has 
 		if (op.kind == IconUIOp::TEXT)
 		{
 			++texts;
-			CHECK(op.text == "Building: 0%");
+			// the English CONTROLBAR:UnderConstructionDesc; another language's text is only checked for its percent (PR #77, as above)
+			if (retailtest::installLanguage() == "English")
+			{
+				CHECK(op.text == "Building: 0%");
+			}
+			else
+			{
+				CHECK(op.text.find("0%") != std::string::npos);
+			}
 		}
 	}
 	CHECK(texts == 1);

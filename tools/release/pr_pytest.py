@@ -24,6 +24,8 @@ SUBSET = [
     "tools/audio/test_mp3_fixtures.py",
     "tools/audio/test_miles_model.py",
     "tools/audio/test_playback_bus_guard.py",
+    "tools/fork/test_retail_check.py",
+    "tools/fork/test_upstream_sync.py",
     "tools/fx/test_fx_ini_scan.py",
     "tools/horde_oracle/test_dump_tables.py",
     "tools/horde_oracle/test_rng_reference.py",

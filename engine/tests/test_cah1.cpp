@@ -8,6 +8,7 @@
 #include "doctest.h"
 
 #include "StartShellFx.h"
+#include "RetailTestMount.h"
 
 #include "Common/CreateAHeroRecord.h"
 #include "GameClient/ControlBarCommands.h"
@@ -1418,11 +1419,9 @@ TEST_CASE("cahpic1 retail shell: TAKE PICTURE arms after two guard draws, names 
 	const std::u16string hero = scr->myHero()->hero().name;
 	// the two box texts from the 2.01 string file (the fixture's text source holds test labels only)
 	{
-		std::vector<std::uint8_t> str;
 		std::string error;
-		REQUIRE_MESSAGE(s->mount->fs->readFile("data/lotr.str", str, &error), error);
 		GameTextTableSource retail;
-		REQUIRE_MESSAGE(retail.table.parse(str, &error), error);
+		REQUIRE_MESSAGE(retail.table.loadRetail(*s->mount->fs, &error), error); // data/lotr.str, or a non-English install's lotr.csf
 		for (const char *label : { "GUI:OnPictureTakenTitle", "GUI:OnPictureTaken" })
 		{
 			std::u16string value;
@@ -1459,8 +1458,16 @@ TEST_CASE("cahpic1 retail shell: TAKE PICTURE arms after two guard draws, names 
 	c.fx->tick(5);
 	REQUIRE(scr->messageBox());
 	CHECK(scr->lastMessage() == "GUI:OnPictureTakenTitle: GUI:OnPictureTaken");
-	CHECK(scr->messageBox()->title() == u"Picture saved for " + hero);
-	CHECK(scr->messageBox()->text() == u"Picture was saved as:\n" + shown + u".");
+	if (retailtest::installLanguage() == "English")
+	{
+		CHECK(scr->messageBox()->title() == u"Picture saved for " + hero);
+		CHECK(scr->messageBox()->text() == u"Picture was saved as:\n" + shown + u".");
+	}
+	else // another language's table is not verified (PR #77): its texts still carry the hero and the file
+	{
+		CHECK(scr->messageBox()->title().find(hero) != std::u16string::npos);
+		CHECK(scr->messageBox()->text().find(shown) != std::u16string::npos);
+	}
 	CHECK(c.fx->wm->noteCount("command-unhandled") == 0);
 	// a picture the device could not save is said plainly, and the movie still reopens its panels
 	scr->pictureTaken(u"", "the folder cannot be written");
