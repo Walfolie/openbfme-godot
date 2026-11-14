@@ -290,6 +290,12 @@ public:
 	// (RW 0x853105, not wired: S-859)
 	void endTemporaryStateMachine();
 	bool hasTemporaryStateMachine() const { return m_temporaryKeptMachine != nullptr; } // RW AI + 0x34 != 0
+	// fork STOPHOLD-1: RW AI + 0x3CC, the player's stop (0 from the constructor RW 0x66F041). groupIdle(CMD_FROM_PLAYER) sets it (RW 0x771F97); while it is
+	// set the unit holds as with STAND_GROUND (the target search, the hunt, the melee approaches test "STAND_GROUND or + 0x3CC") but strikes back: the
+	// mood scan's retaliation branch (RW 0x668848 .. 0x6688E6) takes the body's last attacker and clears it on contact (RW 0x6688C4); the lumber
+	// power's harvest order clears it too (RW 0x897F00). Its getter / setter (RW 0x662030 / 0x662023) are referenced by nothing
+	bool playerStopped() const { return m_playerStopped; }
+	void setPlayerStopped(bool on) { m_playerStopped = on; }
 
 	// ---- lane GARRISON-2: the turret (GameLogic/AI/TurretAI.h; RW AI + 0x20C, one slot) ----
 	TurretAI *turret() const { return m_turret.get(); }
@@ -664,6 +670,7 @@ private:
 	std::int32_t m_areaToGuard = -1;                  ///< lane BFME2CAMP1: RW AI + 0x6C, as the area's index in the script engine's trigger list (-1 none)
 	unsigned m_nextMoodCheck = 0;                     ///< RW AI + 0x21C
 	bool m_randomlyOffsetMoodCheck = false;           ///< lane TARGET-1: RW AI + 0x3BC (0 from the constructor RW 0x66ECFE)
+	bool m_playerStopped = false;                     ///< fork STOPHOLD-1: RW AI + 0x3CC (see playerStopped)
 	ObjectID m_orderedMeleeTarget = INVALID_ID;       ///< lane TARGET-1: RW AI + 0x1A4 (RW 0x66BD33 sets it, the mood scan reads and clears it)
 	const AttackPriorityInfo *m_attackInfo = nullptr; ///< lane TARGET-1: RW AI + 0x70 (derived: the module data's name through the script engine's table)
 	unsigned m_attackInfoGeneration = 0xFFFFFFFFu;    ///< the table generation m_attackInfo was looked up in (a cache key, not state)

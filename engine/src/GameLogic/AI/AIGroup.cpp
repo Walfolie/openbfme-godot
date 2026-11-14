@@ -467,7 +467,14 @@ void AIGroup::groupIdle(CommandSourceType source)
 		}
 		if (AIUpdateInterface *ai = o->getAIUpdateInterface())
 		{
-			ai->aiIdle(source);
+			ai->aiIdle(source); // RW 0x771F85 .. 0x771F88
+			if (source == CMD_FROM_PLAYER)
+			{
+				// fork STOPHOLD-1: RW 0x771F8D .. 0x771F97: the player's stop, AI + 0x3CC = 1 (AIUpdate.h playerStopped). NOT PORTED (S-326, reported): the
+				// next mood check it may then schedule (RW 0x771FA8 .. 0x77203B: status 0x12 with module data + 0x1C, not 0x0F / 0x11, ...: frame +
+				// GameLogicRandomValue(0, LOGICFRAMES_PER_SECOND) + RW 0x68FBD3's + 4 -> + 8, RW 0x662E01)
+				ai->setPlayerStopped(true);
+			}
 		}
 	}
 }

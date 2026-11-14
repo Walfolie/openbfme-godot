@@ -469,7 +469,7 @@ bool canAttackFromHere(Object &source, Object &victim)
 		return false;
 	}
 	const Names &n = names();
-	const bool standing = status(source, n.standGround); // or the AI byte + 0x3CC, which the port never sets (S-326)
+	const bool standing = status(source, n.standGround) || ai->playerStopped(); // RW 0x6FF82C .. 0x6FF845: STAND_GROUND or AI + 0x3CC (fork STOPHOLD-1)
 	const bool horde = kind(source, n.horde);
 	if (horde && !source.getContain())
 	{

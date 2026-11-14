@@ -1026,7 +1026,7 @@ bool SpecialPowerModule::initiate(Object *target, const Coord3D *loc, unsigned o
 	++m_initiates;
 	// lane LUMBER1: the enum switch's SPECIAL_HARVEST case (RW 0x897EC6 .. 0x897F07, enum 0x8D: the workers' Harvest button): the object's AI (+ 0x260) and its
 	// player's ResourceGatheringManager (+ 0x304) find a tree (RW 0x8FA834); found: aiHarvest(position, CMD_FROM_AI) (RW 0x771655) and the AI byte + 0x3CC
-	// cleared (not part of the port: S-583). The other cases (0x33 / 0x88) stay S-529's
+	// cleared (RW 0x897F00: the player's stop, fork STOPHOLD-1). The other cases (0x33 / 0x88) stay S-529's
 	if (const SpecialPowerTemplate *t = getSpecialPowerTemplate(); t && t->getSpecialPowerType() == kSpecialHarvest)
 	{
 		AIUpdateInterface *ai = obj->getAIUpdateInterface();
@@ -1035,6 +1035,7 @@ bool SpecialPowerModule::initiate(Object *target, const Coord3D *loc, unsigned o
 		if (ai && player && player->resourceGatheringManager().findHarvestPosition(obj, pos))
 		{
 			ai->aiHarvest(pos, CMD_FROM_AI);
+			ai->setPlayerStopped(false); // RW 0x897F00
 		}
 	}
 	bool driven = false;

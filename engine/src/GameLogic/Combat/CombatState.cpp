@@ -283,8 +283,10 @@ std::vector<std::string> CombatState::stops()
 		"[S-326] acquisition (lane TARGET-1): RotWK's mood scan getNextMoodTarget (RW 0x66844A) with its cadence (AI + 0x21C, the one-off random offset AI + 0x3BC, "
 		"resetNextMoodCheckTime RW 0x662DD9 on idle entry) and the target search AI::findClosestEnemy (RW 0x7006D7: the partition filters, the AttackPriority table "
 		"score with the combat chain, pathability, the horde adjustment RW 0x68D30E, the line of sight filter RW 0x6616AC: lane LOS-1) run for the idle, attack-move, guard, "
-		"hunt, turret and giant bird scans; not ported: the friendly-fire crowd query (distance type 4, S-1020), the player's stop flag AI + 0x3CC "
-		"and its retaliation branch, the firing tracker's take-once target (Object + 0x248 + 0x38), the contained structure's apparent player, the attack-moving "
+		"hunt, turret and giant bird scans; the player's stop AI + 0x3CC (fork STOPHOLD-1: set by groupIdle from the player, the mood scan's strike back at the "
+		"last attacker, the hold in the target search, the hunt and the melee approaches); not ported: the friendly-fire crowd query (distance type 4, S-1020), "
+		"the stop's mood check schedule (RW 0x771FA8 .. 0x77203B), the attack approach's stand-or-stop branch (RW 0x74E6CE / 0x74ECDA -> 0x74E99B) and the horde "
+		"melee wait's (RW 0x746AE3), the firing tracker's take-once target (Object + 0x248 + 0x38), the contained structure's apparent player, the attack-moving "
 		"skirmish AI filter (state 0x21, S-328), the script attack priority actions and the team prototype's priority override (S-1180); the melee re-acquire (state 0xE5) still uses the port's TargetFinder",
 		"[S-327] horde combat: the horde object runs the melee approach and wait states (B1 ids 0xC8..0xCC) and its members attack through their own attack machine; HordeMeleeAmoeba's cell search is "
 		"approximated by every member attacking the nearest enemy member in reach or walking toward it; the readiness rule, RanksToReleaseWhenAttacking, back-up and the banner carrier are not ported (the crush is lane HORDE-2's: S-580, S-583); the melee wait state's gates are RotWK's "

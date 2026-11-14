@@ -156,7 +156,7 @@ private:
 //     else the line of sight filter (0xC1D620, RW 0x6616AC).
 // INFERENCE / NOT PORTED (stop S-1186, docs/STOPS.md): Object + 0x4A8 is written only by a horde member's player attack order (RW 0x66BDB5, not ported):
 // zero here, so no remembered victim; the crate (AI + 0x238) is S-1188's; the pathfinder's nearby query RW 0x6F2799 is not ported (no extra candidates);
-// the AI bytes + 0x3CC and + 0x3C1 are written by no ported code (false); state 0x3E (ctor RW 0x7410E5) is not defined in the port (never current).
+// the AI byte + 0x3C1 is written by no ported code (false; + 0x3CC is the player's stop, fork STOPHOLD-1); state 0x3E (ctor RW 0x7410E5) is not defined in the port (never current).
 class AIAttackSquadState : public AIState
 {
 public:

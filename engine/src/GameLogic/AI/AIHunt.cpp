@@ -733,7 +733,10 @@ bool AIAttackSquadState::mayEngage(Object &obj, Object *victim)
 	{
 		return true;
 	}
-	return canChase(obj); // and not the AI byte + 0x3CC (S-583: never set)
+	// RW 0x7534B0 .. 0x7534C0 / 0x753686 .. 0x753696: out of reach, it engages when it may chase (RW 0x7459B7) and the player did not stop it (AI + 0x3CC,
+	// fork STOPHOLD-1)
+	const AIUpdateInterface *ai = obj.getAIUpdateInterface();
+	return canChase(obj) && !(ai && ai->playerStopped());
 }
 
 StateReturnType AIAttackSquadState::onEnter()

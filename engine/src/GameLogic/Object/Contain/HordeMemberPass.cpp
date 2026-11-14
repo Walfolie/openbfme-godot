@@ -511,8 +511,8 @@ const char *HordeContain::attackStopLine()
 {
 	return "[S-2610] HordeAttackNugget fire (lane ARCHER-1): HordeContain::attackTargetNow is RotWK's RW 0x875221 and the member pick RW 0x86FA87 (a randomised nearest: "
 	       "every enemy member in reach has its distance times GameLogicRandomValueReal(0.66, 1.33), the smallest product wins), read in full; INFERENCE / not ported: the "
-	       "line of sight filter RW 0x6616AC of ATTACK_NEEDS_LINE_OF_SIGHT / CAN_SHOOT_OVER_WALLS attackers is ported (lane LOS-1), RW 0x6FF7FA's AI byte + 0x3CC is "
-	       "taken as unset (its layer rule is ported, lane WALLMELEE-1), the melee member's touch attack RW 0x69675C uses the Amoeba reach rule (S-588), a victim held by a container that is "
+	       "line of sight filter RW 0x6616AC of ATTACK_NEEDS_LINE_OF_SIGHT / CAN_SHOOT_OVER_WALLS attackers is ported (lane LOS-1), RW 0x6FF7FA reads the AI byte + 0x3CC "
+	       "(the player's stop, fork STOPHOLD-1; its layer rule is ported, lane WALLMELEE-1), the melee member's touch attack RW 0x69675C uses the Amoeba reach rule (S-588), a victim held by a container that is "
 	       "not a HordeContain stays the pick (that contain's slot 0x48 is not read); the position fire RW 0x875550 orders every released member to attack the position "
 	       "(aiAttackPosition RW 0x6961F1, lane HORDEPOS-1)";
 }

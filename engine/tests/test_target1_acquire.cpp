@@ -6,6 +6,8 @@
 
 #include "GameLogic/AI/AIClosestEnemy.h"
 #include "GameLogic/AI/AIAttackMelee.h"
+#include "GameLogic/AI/AIGroup.h"
+#include "GameLogic/Damage.h"
 #include "GameLogic/Combat/TargetFinder.h"
 #include "GameLogic/Combat/CombatNames.h"
 #include "GameLogic/Object/PartitionManager.h"
@@ -412,4 +414,41 @@ TEST_CASE("BFME2 insignificant building filter keeps occupied garrisons and fact
 	REQUIRE(inn->getContain()->addToContain(rider));
 	CHECK(AI::isSignificantBuildingTarget(*inn));
 	CHECK(finder.findClosestEnemy(*unit, 200, filtered, CMD_FROM_AI) == inn);
+}
+
+// Fork lane STOPHOLD-1: the player's stop (RW AI + 0x3CC). groupIdle sets it for the player's source only (RW 0x771F8D .. 0x771F97); the mood scan of a stopped unit,
+// called by the AI while idle, takes the body's last attacker (RW 0x668848 .. 0x6688E6): in contact (edge distance squared below 1) it clears the stop
+// (RW 0x6688C4), in the weapon's reach it keeps it; RW 0x6FF7FA then holds the unit as STAND_GROUND does
+TEST_CASE("stophold1 mood scan: a unit the player stopped strikes back at its last attacker, clearing the stop on contact")
+{
+	TargetWorld w;
+	w.combat().setAutoAcquireEnabled(true);
+	Object *a = w.unit("Swordsman", 'A', 300, 300);
+	Object *near = w.unit("Dummy", 'B', 319, 300);     // in the sword's reach (11.5 past the edges), not touching: edge distance 3
+	Object *touching = w.unit("Dummy", 'B', 300, 314); // the two cylinders overlap: edge distance 0
+	w.frames(2);
+	AIUpdateInterface *ai = a->getAIUpdateInterface();
+	REQUIRE(ai);
+	CHECK_FALSE(ai->playerStopped()); // the constructor's 0 (RW 0x66F041)
+	AIGroup(*w.logic, { a->getID() }).groupIdle(CMD_FROM_AI);
+	CHECK_FALSE(ai->playerStopped()); // an AI's idle does not stop
+	AIGroup(*w.logic, { a->getID() }).groupIdle(CMD_FROM_PLAYER);
+	CHECK(ai->playerStopped());
+	const auto hitFrom = [&](Object *source) {
+		DamageInfo d;
+		d.m_input.m_sourceID = source->getID();
+		d.m_input.m_amount = 1.0f;
+		d.m_input.m_damageType = DAMAGE_UNRESISTABLE;
+		a->attemptDamage(d);
+	};
+	// struck from within reach: the attacker is the target, the stop stays
+	hitFrom(near);
+	ai->setNextMoodCheckTime(w.logic->getFrame());
+	CHECK(ai->getNextMoodTarget(true, true) == near);
+	CHECK(ai->playerStopped());
+	// struck by the one it touches: that one, and the stop clears
+	hitFrom(touching);
+	ai->setNextMoodCheckTime(w.logic->getFrame());
+	CHECK(ai->getNextMoodTarget(true, true) == touching);
+	CHECK_FALSE(ai->playerStopped());
 }

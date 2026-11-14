@@ -34,8 +34,8 @@
 //   * 0xE5 onEnter RW 0x74D46D: within LOGICFRAMES_PER_SECOND / 4 frames of the last run -> FAILURE; IS_MELEE_ATTACKING off; a horde member inside its horde, no weapon
 //     -> FAILURE; a victim that is gone or stealthed is replaced by the nearest enemy within 2 * MeleeApproachDist (RW 0x660D2C / 0x660EC6 filters, RW 0xA39090),
 //     else the victim stays the goal; the current victim, the frame stored, SUCCESS.
-// INFERENCE (stop S-787): the machine-busy test (RW 0x8DBDFF), RW 0x694C0D (stealth: none), RW 0x792973, RW 0x744B25, AI vslot 0x168 and the + 0x3CC byte are not
-// ported (taken as false); STAND_GROUND's RW 0x6FF7FA is "the weapon reaches"; the fire-during-approach sub-state of 0xE2 (+ 0x4C / + 0x50, RW 0x740E39) and the
+// INFERENCE (stop S-787): the machine-busy test (RW 0x8DBDFF), RW 0x694C0D (stealth: none), RW 0x792973, RW 0x744B25 and AI vslot 0x168 are not ported (taken as
+// false; fork STOPHOLD-1 ported the + 0x3CC byte in 0xE1's onEnter); STAND_GROUND's RW 0x6FF7FA is "the weapon reaches"; the fire-during-approach sub-state of 0xE2 (+ 0x4C / + 0x50, RW 0x740E39) and the
 // run-down speed of a fleeing victim are not ported; the own-position reservation does not write AI + 0x180 / + 0x3B0 (RW 0x68B411); the re-acquisition filters of
 // 0xE5 are TargetFinder's (S-326); RW 0x68C9AC is the victim's position; the siege-deploy branches are not ported.
 
@@ -260,10 +260,14 @@ StateReturnType AIAttackMeleeApproachState::onEnter()
 	Object &self = owner();
 	a.noteLogicStop(kStopMeleeMachine);
 	Object *victim = victimOf(*this);
-	if (self.testStatus((unsigned)CombatNames::status("STAND_GROUND")))
+	// RW 0x74EF98 .. 0x74EFB6: STAND_GROUND or the player's stop (AI + 0x3CC, fork STOPHOLD-1)
+	const bool stopped = a.playerStopped();
+	if (self.testStatus((unsigned)CombatNames::status("STAND_GROUND")) || stopped)
 	{
-		// RW 0x6FF7FA (S-787: the reach test)
-		if (victim && hasWeapon(self) && inReach(self, *victim))
+		// RW 0x6FF7FA (S-787: the reach test); RW 0x74F1C6 .. 0x74F1F9: a stopped unit also needs its current weapon (RW 0x68B58C(0)) to reach the victim
+		// (RW 0x6CC653(me, victim, 0, true))
+		const ObjectWeapons *w = self.getWeapons();
+		if (victim && hasWeapon(self) && inReach(self, *victim) && (!stopped || (w && w->currentWeapon() && w->isWithinAttackRange(*victim, 0.0f, true))))
 		{
 			return STATE_SUCCESS;
 		}

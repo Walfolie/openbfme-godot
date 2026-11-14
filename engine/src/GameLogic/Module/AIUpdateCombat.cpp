@@ -877,11 +877,35 @@ Object *AIUpdateInterface::getNextMoodTarget(bool calledByAI, bool calledDuringI
 	{
 		q |= AI::COMPUTER_CREEPS;
 	}
-	// RW 0x668843 .. 0x6688EA (AI + 0x3CC, the player's stop order RW 0x771F49, and the body's last attacker): the port never sets + 0x3CC (S-326).
+	// fork STOPHOLD-1: RW 0x668848 .. 0x6688E6, the strike back of a unit the player stopped (AI + 0x3CC, playerStopped): called by the AI while idle, the
+	// body's last damage record (body vslot 0x40, its + 8: ActiveBody::lastDamager) names the attacker (RW 0x449681). With a current weapon (RW 0x68B58C(0))
+	// and the attacker attackable (RW 0x68D6A6(ATTACK_NEW_TARGET, it, CMD_FROM_AI); ObjectWeapons::canAttackObject stands in, as in AIGuard and the turret)
+	// the attacker is the target when the two touch (RW 0x66352C: the edge distance squared below 1, x87 fld1 / fcompi; AI + 0x3CC cleared, RW 0x6688C4)
+	// or when the weapon reaches it (RW 0x6CC653(me, it, 0, true)); such a target goes on at RW 0x6689F0 as the search's does
+	Object *struckBack = nullptr;
+	if (m_playerStopped && calledByAI && calledDuringIdle)
+	{
+		const ActiveBody *body = dynamic_cast<const ActiveBody *>(obj.getBodyModule());
+		const ObjectWeapons *weapons = obj.getWeapons();
+		Object *attacker = body ? logic.findObjectByID(body->lastDamager()) : nullptr;
+		if (attacker && weapons && weapons->currentWeapon() && weapons->canAttackObject(*attacker, CMD_FROM_AI, false))
+		{
+			if (CombatQueries::edgeDistanceSquared2D(obj, *obj.getPosition(), *attacker, *attacker->getPosition()) < 1.0f)
+			{
+				m_playerStopped = false;
+				struckBack = attacker;
+			}
+			if (weapons->isWithinAttackRange(*attacker, 0.0f, true))
+			{
+				struckBack = attacker;
+			}
+		}
+	}
 	// RW 0x6688EC .. 0x668919: the firing tracker's take-once object (Object + 0x248 -> + 0x38, RW 0x68B666 / 0x8E2E0A), its writer not identified and never
 	// set in the port (S-326).
 	MoodTargetFilter moodFilter(obj);
-	Object *target = AI::findClosestEnemy(obj, range, q, attackInfo(), player && player->getPlayerType() == PLAYER_HUMAN ? &moodFilter : nullptr, 0); // RW 0x701443
+	Object *target = struckBack ? struckBack
+		: AI::findClosestEnemy(obj, range, q, attackInfo(), player && player->getPlayerType() == PLAYER_HUMAN ? &moodFilter : nullptr, 0); // RW 0x701443
 	// RW 0x6689F0: a lone unit's HORDE target becomes one of its members (RW 0x68D30E(me, 0, 0))
 	if (target && !obj.isKindOf((unsigned)kHorde) && target->isKindOf((unsigned)kHorde))
 	{

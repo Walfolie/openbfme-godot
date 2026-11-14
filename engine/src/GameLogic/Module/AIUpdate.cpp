@@ -2337,6 +2337,10 @@ void AIUpdateInterface::crc(StateHasher &h) const
 	h.addFloat(m_attackMoveGoal.z);
 	h.addU32(m_nextMoodCheck);
 	h.addBool(m_randomlyOffsetMoodCheck); // lane TARGET-1: AI + 0x3BC / + 0x1A4
+	if (m_playerStopped)
+	{
+		h.addU32(0x3CC00001u); // fork STOPHOLD-1: hashed while set (a game without a player's stop keeps its hash)
+	}
 	h.addU32(m_orderedMeleeTarget);
 	h.addBool(m_isInUpdate);
 	h.addBool(m_pendingValid);
