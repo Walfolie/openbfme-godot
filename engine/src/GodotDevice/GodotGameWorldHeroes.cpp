@@ -222,6 +222,11 @@ Dictionary GameWorld::get_ability_state(int64_t id) const
 int64_t GameWorld::ready_object_powers(int64_t id)
 {
 	const auto worldContext = m_world ? m_world->enterContext() : nullptr;
+	if (m_netHost || m_netClient || m_netStarted || m_netSession) // outside the command path: only one peer would run it (a desync)
+	{
+		m_commandErrors.push_back("ready_object_powers: refused in a network game");
+		return 0;
+	}
 	::Object *o = m_game && id > 0 ? m_game->logic().findObjectByID((::ObjectID)id) : nullptr;
 	int64_t n = 0;
 	if (!o)
@@ -275,6 +280,11 @@ bool GameWorld::cast_object_power(int64_t player, int64_t id, const String &powe
 void GameWorld::gain_hero_levels(int64_t id, int64_t levels)
 {
 	const auto worldContext = m_world ? m_world->enterContext() : nullptr;
+	if (m_netHost || m_netClient || m_netStarted || m_netSession) // outside the command path: only one peer would run it (a desync)
+	{
+		m_commandErrors.push_back("gain_hero_levels: refused in a network game");
+		return;
+	}
 	::Object *o = m_game && id > 0 ? m_game->logic().findObjectByID((::ObjectID)id) : nullptr;
 	if (o && o->getExperienceTracker() && levels > 0)
 	{
@@ -285,6 +295,11 @@ void GameWorld::gain_hero_levels(int64_t id, int64_t levels)
 void GameWorld::kill_hero(int64_t id)
 {
 	const auto worldContext = m_world ? m_world->enterContext() : nullptr;
+	if (m_netHost || m_netClient || m_netStarted || m_netSession) // outside the command path: only one peer would run it (a desync)
+	{
+		m_commandErrors.push_back("kill_hero: refused in a network game");
+		return;
+	}
 	::Object *o = m_game && id > 0 ? m_game->logic().findObjectByID((::ObjectID)id) : nullptr;
 	if (!o)
 	{
@@ -300,6 +315,11 @@ void GameWorld::kill_hero(int64_t id)
 void GameWorld::damage_object(int64_t id, double amount)
 {
 	const auto worldContext = m_world ? m_world->enterContext() : nullptr;
+	if (m_netHost || m_netClient || m_netStarted || m_netSession) // outside the command path: only one peer would run it (a desync)
+	{
+		m_commandErrors.push_back("damage_object: refused in a network game");
+		return;
+	}
 	::Object *o = m_game && id > 0 ? m_game->logic().findObjectByID((::ObjectID)id) : nullptr;
 	if (!o)
 	{
@@ -314,6 +334,11 @@ void GameWorld::damage_object(int64_t id, double amount)
 void GameWorld::give_money(int64_t player, int64_t amount)
 {
 	const auto worldContext = m_world ? m_world->enterContext() : nullptr;
+	if (m_netHost || m_netClient || m_netStarted || m_netSession) // outside the command path: only one peer would run it (a desync)
+	{
+		m_commandErrors.push_back("give_money: refused in a network game");
+		return;
+	}
 	::Player *p = m_game ? m_game->logic().players().getNthPlayer((int)player) : nullptr;
 	if (p && amount > 0)
 	{

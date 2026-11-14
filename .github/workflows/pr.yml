@@ -158,6 +158,12 @@ jobs:
         with:
           path: .ccache
           key: ccache-linux-${{ github.sha }}
+      - name: Simulation floating-point audit (flags, manifest and AST)
+        # tools/sim/README.md's Linux recipe on this job's own compile commands; --ast=require is the default, so a missing
+        # libclang is a failure, never a skipped check (engine/cmake/SimFp.cmake relies on CI running it)
+        run: |
+          python3 -m pip install --disable-pip-version-check --no-input "libclang==18.1.1"
+          python3 tools/sim/sim_audit.py --build engine/build
       - name: Unit tests (the tests that need the game skip)
         run: |
           engine/build/openbfme_tests

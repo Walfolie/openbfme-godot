@@ -72,6 +72,7 @@ SUBSET = [
     "tools/save/test_retail_save.py",
     "tools/script/test_script_tools.py",
     "tools/sim/test_float_chars.py",
+    "tools/sim/test_net_mutator_guard.py",
     "tools/sim/test_sim_audit.py",
     "tools/skirmish_ai/test_tactic_draws.py",
     "tools/test_coverage_report.py",

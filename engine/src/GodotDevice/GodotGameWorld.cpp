@@ -3527,6 +3527,11 @@ bool GameWorld::destroy_object(int64_t id)
 	{
 		return false;
 	}
+	if (m_netHost || m_netClient || m_netStarted || m_netSession) // outside the command path: only one peer would run it (a desync)
+	{
+		m_commandErrors.push_back("destroy_object: refused in a network game");
+		return false;
+	}
 	::Object *o = m_game->logic().findObjectByID((::ObjectID)id);
 	if (!o || o->isDestroyed())
 	{
@@ -3687,6 +3692,11 @@ int64_t GameWorld::create_object(const String &template_name, int64_t player, do
 	if (!m_game)
 	{
 		m_commandErrors.push_back("create_object: no map is loaded");
+		return -1;
+	}
+	if (m_netHost || m_netClient || m_netStarted || m_netSession) // outside the command path: only one peer would run it (a desync)
+	{
+		m_commandErrors.push_back("create_object: refused in a network game");
 		return -1;
 	}
 	Coord3D pos;
@@ -4148,6 +4158,11 @@ bool GameWorld::build2_wall_span(int64_t hub, const String &cap_template, double
 bool GameWorld::build2_damage(int64_t id, double amount)
 {
 	const auto worldContext = m_world ? m_world->enterContext() : nullptr;
+	if (m_netHost || m_netClient || m_netStarted || m_netSession) // outside the command path: only one peer would run it (a desync)
+	{
+		m_commandErrors.push_back("build2_damage: refused in a network game");
+		return false;
+	}
 	::Object *o = m_game ? m_game->logic().findObjectByID((::ObjectID)id) : nullptr;
 	if (!o)
 	{
