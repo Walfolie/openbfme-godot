@@ -893,6 +893,9 @@ public:
 		std::uint32_t value = 0;
 	};
 	std::uint32_t computeStateHashBreakdown(std::vector<StateHashSection> &sections, std::vector<ObjectStateHash> *objects) const;
+	// fork DESYNC-1 (the desync bisector): after computeStateHashBreakdown in the Faithful profile, each section's words in the sections' order (the
+	// objects section's entry is empty: its words are the objects', Object::crcSpans). False in the Uber profile, which keeps no words
+	bool lastSectionWords(std::vector<std::vector<std::uint32_t>> &out) const;
 
 	// ---- lane SAVE-4a: the snapshot (Common/GameState.h, docs/SAVES.md; GameLogicSnapshot.cpp) ----------------------------------------------------
 	// The registry of every simulation subsystem's block (registerSnapshotBlocks: the core blocks with their xfer, the others declared for the SAVE-4

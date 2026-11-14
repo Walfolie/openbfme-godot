@@ -41,6 +41,8 @@ public:
 			m_crc = ((m_crc << 1) | (m_crc >> 31)) + v;
 		}
 	}
+	// fork DESYNC-1: the words a recording hasher holds so far (0 for a chaining one): where a part of the input begins on the tape
+	size_t tapeSize() const { return m_tape ? m_tape->size() : 0; }
 	void addI32(std::int32_t v) { addU32((std::uint32_t)v); }
 	void addBool(bool v) { addU32(v ? 1u : 0u); }
 	void addU64(std::uint64_t v)

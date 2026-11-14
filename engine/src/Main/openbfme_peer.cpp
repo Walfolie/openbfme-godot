@@ -56,6 +56,13 @@
 //     frame); [--net-resume-ms MS] once the game has been paused MS ms this peer resumes it (any player may); [--rejoin-window-ms N] an online
 //     game's rejoin window (default 300000)
 //   openbfme_peer --rotwk DIR --bfme2 DIR --replay FILE [--report FILE]
+//   fork DESYNC-1 (tools/replay/desync_bisect.py): ... --replay FILE --recorded-hashes OUT   writes the replay's recorded state hashes ("frame hash" lines,
+//     the recording peer's own) without running the game, and exits; ... --replay FILE --breakdown-at FRAME --breakdown-out OUT   plays the replay and,
+//     after logic frame FRAME, writes the state hash broken down to every section's and every object's words (with the parts of each object,
+//     Object::crcSpans) to OUT; the report says breakdown_frame and whether the re-simulation reproduced the recorded hash there (Faithful profile only);
+//     with --inject-divergence F the planted desync of the live peer is made again (the recording player's money), so a planted peer's recording replays;
+//     [--inject-object-divergence FRAME] (a game or a replay) the planted desync of an object: after that frame the local player's first object moves
+//     1/16 unit along x on this peer only (the bisector's test of an object's part)
 //   lane ANTICHEAT-1: ... --replay FILE --fog-check OUT.json [--game-id ID]   also runs the integrity check D1 (GameNetwork/OrdersIntoFog.h: orders on
 //     objects the player could not see) over the re-simulation and writes its JSON report; the check abstains when the replay lost a command, has no
 //     recorded hashes, starts from a save or the re-simulation does not reproduce them (crc_parity); without an end record (a relay log's replay) the
@@ -211,6 +218,10 @@ struct Args
 	std::string snapshotOut; ///< lane SAVE-4e: --snapshot-out FILE (with --replay): the snapshot at the replay's end (T3, the bytes across OSes)
 	std::string profileText; ///< lane SAVE-2: --profile-text FILE writes this build's profile identity text there and exits (a test records under it)
 	long long injectFrame = -1;
+	long long injectObjectFrame = -1;    ///< fork DESYNC-1: --inject-object-divergence FRAME
+	std::string recordedHashes;          ///< fork DESYNC-1: --recorded-hashes OUT (with --replay)
+	long long breakdownAt = -1;          ///< fork DESYNC-1: --breakdown-at FRAME (with --replay and --breakdown-out)
+	std::string breakdownOut;
 	int dropPerMille = 0, delayMs = 0, jitterMs = 0;
 	std::vector<std::string> links;          ///< lane MP-3: --link [SLOT:]FAULTS
 	long long impairSeed = -1;
@@ -362,6 +373,10 @@ bool parseArgs(int argc, char **argv, Args &a, std::string &error)
 		else if (k == "--snapshot-out" && next(a.snapshotOut)) {}
 		else if (k == "--profile-text" && next(a.profileText)) {}
 		else if (k == "--inject-divergence" && next(v)) a.injectFrame = std::atoll(v.c_str());
+		else if (k == "--recorded-hashes" && next(a.recordedHashes)) {}
+		else if (k == "--inject-object-divergence" && next(v)) a.injectObjectFrame = std::atoll(v.c_str());
+		else if (k == "--breakdown-at" && next(v)) a.breakdownAt = std::atoll(v.c_str());
+		else if (k == "--breakdown-out" && next(a.breakdownOut)) {}
 		else if (k == "--drop" && next(v)) a.dropPerMille = std::atoi(v.c_str());
 		else if (k == "--delay" && next(v)) a.delayMs = std::atoi(v.c_str());
 		else if (k == "--jitter" && next(v)) a.jitterMs = std::atoi(v.c_str());
@@ -831,6 +846,133 @@ void dumpFogState(const Args &a, GameLogic &logic, UnsignedInt next)
 	}
 }
 
+// fork DESYNC-1: the planted object desync: after the frame, the first object `player` controls moves 1/16 unit along x (one peer only, as a bug would)
+void plantObjectDivergence(GameLogic &logic, int player)
+{
+	const Player *owner = logic.players().getNthPlayer(player);
+	for (Object *o = logic.getFirstObject(); o && owner; o = o->getNextObject())
+	{
+		if (o->getControllingPlayer() == owner)
+		{
+			Coord3D p = *o->getPosition();
+			p.x += 0.0625f;
+			o->setPosition(&p);
+			return;
+		}
+	}
+}
+
+// fork DESYNC-1: the replay's driver, unchanged, that also breaks the state hash down to its words after one logic frame (on the simulation owner, before
+// the frame's completion is captured: the state the recorded hash of that frame describes)
+class BreakdownDriver : public LiveGameFrameDriver
+{
+public:
+	BreakdownDriver(LiveGameFrameDriver &inner, UnsignedInt frame) : m_inner(inner), m_frame(frame) {}
+	// --inject-divergence in a replay: the live peer's planted desync (one more unit of money for the recording player after that frame) made again, so
+	// the re-simulation of the planted peer's recording reproduces it (a test of the bisector; a real desync needs no such help)
+	void inject(long long frame, long long objectFrame, int player)
+	{
+		m_injectFrame = frame;
+		m_injectObjectFrame = objectFrame;
+		m_injectPlayer = player;
+	}
+	Capture capture() const override { return m_inner.capture(); }
+	bool hashWanted(UnsignedInt frame) const override { return m_inner.hashWanted(frame); }
+	void pump(UnsignedInt protocolFrame, CommandList &pending) override { m_inner.pump(protocolFrame, pending); }
+	void frameDue(UnsignedInt frame, std::uint32_t msFromNow) override { m_inner.frameDue(frame, msFromNow); }
+	bool acquire(UnsignedInt frame, FrameBatch &out) override { return m_inner.acquire(frame, out); }
+	void completed(const FrameCompletion &c) override { m_inner.completed(c); }
+	void simulationAfterFrame(GameLogic &logic) override
+	{
+		m_inner.simulationAfterFrame(logic);
+		if (m_injectFrame >= 0 && logic.getFrame() == (UnsignedInt)m_injectFrame && logic.players().getNthPlayer(m_injectPlayer))
+		{
+			logic.players().getNthPlayer(m_injectPlayer)->getMoney()->deposit(1, false); // as the live peer's setAfterFrame does
+		}
+		if (m_injectObjectFrame >= 0 && logic.getFrame() == (UnsignedInt)m_injectObjectFrame)
+		{
+			plantObjectDivergence(logic, m_injectPlayer);
+		}
+		if (logic.getFrame() == m_frame && !m_done)
+		{
+			m_hash = describe(logic, m_text, m_error);
+			m_done = true;
+		}
+	}
+	bool done() const { return m_done; }
+	std::uint32_t hash() const { return m_hash; }
+	const std::string &text() const { return m_text; }
+	const std::string &error() const { return m_error; }
+
+	// "frame", "total", then per section "section INDEX HASH NAME" and its "words INDEX w ..", per object "object ID HASH TEMPLATE", its "span ID OFFSET
+	// PART" lines and "owords ID w ..": hex words, in the order the hash feeds them
+	static std::uint32_t describe(const GameLogic &logic, std::string &out, std::string &error)
+	{
+		std::vector<GameLogic::StateHashSection> sections;
+		std::vector<GameLogic::ObjectStateHash> objects;
+		const std::uint32_t total = logic.computeStateHashBreakdown(sections, &objects);
+		std::vector<std::vector<std::uint32_t>> words;
+		if (!logic.lastSectionWords(words))
+		{
+			error = "the Uber profile keeps no words of the state hash: --breakdown-at needs a Faithful game";
+			return total;
+		}
+		std::ostringstream o;
+		char b[16];
+		auto hex = [&b](std::uint32_t v) {
+			std::snprintf(b, sizeof(b), "%08x", (unsigned)v);
+			return std::string(b);
+		};
+		o << "frame " << logic.getFrame() << "\n";
+		o << "total " << hex(total) << "\n";
+		for (size_t i = 0; i < sections.size(); ++i)
+		{
+			o << "section " << i << " " << hex(sections[i].value) << " " << sections[i].name << "\n";
+			o << "words " << i;
+			if (sections[i].name != "objects" && i < words.size())
+			{
+				for (std::uint32_t v : words[i])
+				{
+					o << " " << hex(v);
+				}
+			}
+			o << "\n";
+		}
+		std::vector<std::uint32_t> tape;
+		std::vector<std::pair<std::string, size_t>> spans;
+		for (const Object *obj = logic.getFirstObject(); obj; obj = obj->getNextObject())
+		{
+			tape.clear();
+			StateHasher rec(&tape);
+			obj->crcSpans(rec, spans);
+			StateHasher own;
+			own.replay(tape);
+			o << "object " << obj->getID() << " " << hex(own.value()) << " " << (obj->getTemplate() ? obj->getTemplate()->getName() : std::string()) << "\n";
+			for (const auto &sp : spans)
+			{
+				o << "span " << obj->getID() << " " << sp.second << " " << sp.first << "\n";
+			}
+			o << "owords " << obj->getID();
+			for (std::uint32_t v : tape)
+			{
+				o << " " << hex(v);
+			}
+			o << "\n";
+		}
+		out = o.str();
+		return total;
+	}
+
+private:
+	LiveGameFrameDriver &m_inner;
+	UnsignedInt m_frame;
+	long long m_injectFrame = -1, m_injectObjectFrame = -1;
+	int m_injectPlayer = -1;
+	bool m_done = false;
+	std::uint32_t m_hash = 0;
+	std::string m_text, m_error;
+};
+
 int runReplay(const Args &a, World &w)
 {
 	std::string error;
@@ -839,6 +981,24 @@ int runReplay(const Args &a, World &w)
 	{
 		std::fprintf(stderr, "openbfme_peer: %s\n", error.c_str());
 		return 1;
+	}
+	if (!a.recordedHashes.empty())
+	{
+		// fork DESYNC-1: the recording peer's own hashes, nothing run
+		std::ofstream h(PathIO::native(a.recordedHashes), std::ios::binary | std::ios::trunc);
+		for (const auto &fh : replay.hashes)
+		{
+			char line[48];
+			std::snprintf(line, sizeof(line), "%u %08x\n", (unsigned)fh.first, (unsigned)fh.second);
+			h << line;
+		}
+		h << "final " << replay.finalFrame << " " << (replay.complete ? "complete" : "incomplete") << "\n";
+		if (!h)
+		{
+			std::fprintf(stderr, "openbfme_peer: cannot write %s\n", a.recordedHashes.c_str());
+			return 4;
+		}
+		return 0;
 	}
 	// PLAN: a replay of another profile identity is refused before the game is loaded
 	const std::string mismatch = replay.loadRefusal(w.profile);
@@ -983,15 +1143,61 @@ int runReplay(const Args &a, World &w)
 		fogDriver->offer(game.logic());
 		game.setFrameDriver(fogDriver.get());
 	}
-	else
+	std::unique_ptr<BreakdownDriver> breakdown;
+	if (a.breakdownAt >= 0)
+	{
+		if (checks || a.breakdownOut.empty())
+		{
+			std::fprintf(stderr, "openbfme_peer: --breakdown-at needs --breakdown-out and no integrity check\n");
+			return 1;
+		}
+		breakdown = std::make_unique<BreakdownDriver>(playback, (UnsignedInt)a.breakdownAt);
+		if (a.injectFrame >= 0 || a.injectObjectFrame >= 0)
+		{
+			const int slot = replay.header.recordingSlot;
+			breakdown->inject(a.injectFrame, a.injectObjectFrame, slot >= 0 && (size_t)slot < replay.header.network.slotPlayerIndex.size() ? replay.header.network.slotPlayerIndex[(size_t)slot] : -1);
+		}
+		game.setFrameDriver(breakdown.get());
+	}
+	else if (!checks)
 	{
 		game.setFrameDriver(&playback);
 	}
-	while (!playback.finished())
+	while (!playback.finished() && !(breakdown && breakdown->done()))
 	{
 		game.advance(0.2);
 	}
 	game.drainFrames();
+	if (breakdown)
+	{
+		if (!breakdown->done())
+		{
+			std::fprintf(stderr, "openbfme_peer: the replay ends before logic frame %lld\n", a.breakdownAt);
+			return 2;
+		}
+		if (!breakdown->error().empty())
+		{
+			std::fprintf(stderr, "openbfme_peer: %s\n", breakdown->error().c_str());
+			return 1;
+		}
+		std::ofstream bo(PathIO::native(a.breakdownOut), std::ios::binary | std::ios::trunc);
+		bo << breakdown->text();
+		if (!bo)
+		{
+			std::fprintf(stderr, "openbfme_peer: cannot write %s\n", a.breakdownOut.c_str());
+			return 4;
+		}
+		const auto rec = replay.hashes.find((UnsignedInt)a.breakdownAt);
+		std::ostringstream br;
+		char line[96];
+		std::snprintf(line, sizeof(line), "breakdown_frame %lld hash %08x recorded %s\n", a.breakdownAt, (unsigned)breakdown->hash(),
+			rec == replay.hashes.end() ? "none" : (rec->second == breakdown->hash() ? "same" : "different"));
+		br << line;
+		br << "first_mismatch_before " << (playback.hasMismatch() ? std::to_string(playback.firstMismatch().frame) : std::string("none")) << "\n";
+		writeReport(a.report, br.str());
+		std::fputs(br.str().c_str(), stdout);
+		return 0;
+	}
 	if (checks)
 	{
 		std::string parity = "none";
@@ -1994,6 +2200,7 @@ static int peerMain(int argc, char **argv)
 	{
 		const int me = session.config().slotPlayerIndex[(size_t)lobby.localSlot];
 		const long long at = a.injectFrame;
+		const long long objectAt = a.injectObjectFrame;
 		const int delay = a.workerDelayMs;
 		// lane MP-3 (review r1): the game slot of every player index (a transfer checkpoint names slots)
 		const LiveGame::Report lr0 = game.report();
@@ -2005,11 +2212,15 @@ static int peerMain(int argc, char **argv)
 				slotOfPlayer[p->getPlayerIndex()] = sl;
 			}
 		}
-		session.driver().setAfterFrame([me, at, delay, &hashes, &checkpoints, &slotOfPlayer](GameLogic &logic) {
+		session.driver().setAfterFrame([me, at, objectAt, delay, &hashes, &checkpoints, &slotOfPlayer](GameLogic &logic) {
 			if (at >= 0 && logic.getFrame() == (UnsignedInt)at)
 			{
 				// the injected divergence: one more unit of money on this peer only (as a desync bug would)
 				logic.players().getNthPlayer(me)->getMoney()->deposit(1, false);
+			}
+			if (objectAt >= 0 && logic.getFrame() == (UnsignedInt)objectAt)
+			{
+				plantObjectDivergence(logic, me); // fork DESYNC-1
 			}
 			std::uint32_t rng = 0x811C9DC5u;
 			for (std::uint32_t w : logic.random().seedArray())

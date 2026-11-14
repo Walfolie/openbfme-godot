@@ -1197,6 +1197,17 @@ bool GameLogic::findBuildableStatusOverride(const ThingTemplate *tt, std::int32_
 	return true;
 }
 
+bool GameLogic::lastSectionWords(std::vector<std::vector<std::uint32_t>> &out) const
+{
+	out.clear();
+	if (m_simulationProfile == SimulationProfile::Uber)
+	{
+		return false;
+	}
+	out = m_hashSectionTapes;
+	return true;
+}
+
 std::uint32_t GameLogic::computeStateHashBreakdown(std::vector<StateHashSection> &sections, std::vector<ObjectStateHash> *objects) const
 {
 	sections.clear();

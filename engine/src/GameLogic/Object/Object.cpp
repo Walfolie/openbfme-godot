@@ -2512,6 +2512,21 @@ void Object::crc(StateHasher &h) const
 
 void Object::crcOmittingModules(StateHasher &h, const std::function<bool(const BehaviorModule &)> &omit) const
 {
+	crcParts(h, omit, nullptr);
+}
+
+void Object::crcSpans(StateHasher &recorder, std::vector<std::pair<std::string, size_t>> &spans) const
+{
+	spans.clear();
+	crcParts(recorder, nullptr, &spans);
+}
+
+void Object::crcParts(StateHasher &h, const std::function<bool(const BehaviorModule &)> &omit, std::vector<std::pair<std::string, size_t>> *spans) const
+{
+	if (spans)
+	{
+		spans->emplace_back("object", h.tapeSize());
+	}
 	h.addU32(m_id);
 	h.addU32(m_template ? (std::uint32_t)static_cast<const ThingTemplate *>(m_template)->getTemplateID() : 0u);
 	h.addU32(m_team ? m_team->getID() : 0u);
@@ -2657,8 +2672,16 @@ void Object::crcOmittingModules(StateHasher &h, const std::function<bool(const B
 		{
 			continue;
 		}
+		if (spans)
+		{
+			spans->emplace_back("module " + m->getModuleTagName(), h.tapeSize());
+		}
 		h.addU32(m->getModuleClassHash());
 		m->crc(h);
+	}
+	if (spans)
+	{
+		spans->emplace_back("combat", h.tapeSize());
 	}
 	// COMBAT-1
 	h.addBool(m_effectivelyDead);

@@ -574,6 +574,10 @@ public:
 	void crc(StateHasher &hasher) const;
 	// lane SAVE-4b (tests): crc with the modules `omit` answers left out (a lane's part of an object; crc itself is this with no module left out)
 	void crcOmittingModules(StateHasher &hasher, const std::function<bool(const BehaviorModule &)> &omit) const;
+	// fork DESYNC-1 (the desync bisector): crc into a recording hasher, with the tape offset where each part begins ("object", "module <tag>" for every
+	// module, "combat"): which part of an object two peers disagree on. The words are crc's
+	void crcSpans(StateHasher &recorder, std::vector<std::pair<std::string, size_t>> &spans) const;
+	void crcParts(StateHasher &hasher, const std::function<bool(const BehaviorModule &)> &omit, std::vector<std::pair<std::string, size_t>> *spans) const;
 	// lane SAVE-4b: the object's snapshot (OpenBFME native layout, S-4190; GameLogic/GameLogicObjectSnapshot.cpp): its own state, its ExperienceTracker and
 	// weapons, then every module keyed by its tag inside a block (retail Object::xfer RW 0x697F28's module loop, SAVES-RETAIL.md section 3). The Objects
 	// block creates every object of the snapshot before any of them loads, so ids resolve to objects at once
