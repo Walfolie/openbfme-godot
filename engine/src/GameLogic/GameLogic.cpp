@@ -1361,15 +1361,12 @@ std::uint32_t GameLogic::hashState(std::vector<StateHashSection> *sections, std:
 		}
 		hashObjectsTaped(x); // lane PERF-HD: every object's crc in list order, its words found on the job pool
 	});
-	if (objects)
-	{
-		for (const Object *o = m_objectHead; o; o = o->getNextObject())
-		{
-			StateHasher own;
-			o->crc(own);
-			objects->push_back(ObjectStateHash{ o->getID(), o->getTemplate() ? o->getTemplate()->getName() : std::string(), own.value() });
-		}
-	}
+	// every object's own hash (`objects`) is taken from the objects section's work below (fork CRCFREQ-1: it was a second, serial crc walk of every object,
+	// as long as the parallel hash itself; the values are the same: a fresh hasher fed an object's words, as Object::crc feeds them)
+	auto objectHash = [&](size_t i, std::uint32_t value) {
+		const Object *o = m_uberHashObjects[i];
+		objects->push_back(ObjectStateHash{ o->getID(), o->getTemplate() ? o->getTemplate()->getName() : std::string(), value });
+	};
 	// lane MODULES-2: after the objects, before the contributors (the MP-1 section order keeps its fixed head and tail)
 	section("partition manager", [&](StateHasher &x) { m_partition->crc(x); }); // the trees' link order is history, hence state
 	section("emotion system", [&](StateHasher &x) { m_emotions->crc(x); });     // the scary / hero list (its order is state)
@@ -1499,6 +1496,16 @@ std::uint32_t GameLogic::hashState(std::vector<StateHashSection> *sections, std:
 			}
 			record(pending[i], sections ? x.value() : 0u, before);
 		}
+		if (objects && objectsTape < pending.size())
+		{
+			objects->reserve(objectCount);
+			for (size_t o = 0; o < objectCount; ++o)
+			{
+				StateHasher own;
+				own.replay(m_hashObjectTapes[o]);
+				objectHash(o, own.value());
+			}
+		}
 		return h.value();
 	}
 	// lane UBER-1 (docs/UBER.md), NOT A PORT: every section is hashed into its own StateHasher (the objects section first, on this thread: it spreads its
@@ -1555,6 +1562,14 @@ std::uint32_t GameLogic::hashState(std::vector<StateHashSection> *sections, std:
 		const std::uint32_t before = h.value();
 		h.addU32(values[i]);
 		record(pending[i], values[i], before);
+	}
+	if (objects && objectsIndex < pending.size())
+	{
+		objects->reserve(m_uberHashValues.size());
+		for (size_t o = 0; o < m_uberHashValues.size(); ++o)
+		{
+			objectHash(o, m_uberHashValues[o]); // each object hashed into its own fresh hasher above
+		}
 	}
 	return h.value();
 }

@@ -35,7 +35,7 @@ struct LobbyStart
 	NewGameMessage game;
 	int localSlot = -1;
 	int runAhead = 1; ///< lane NETLAG-1: RotWK's frame + 1 (was 2)
-	int crcInterval = 100;
+	int crcInterval = 10; ///< fork CRCFREQ-1: 10 frames (2 s; was 100, 20 s), measured at 0.85% of the logic step at 2900 objects (test_perf2_bench.cpp)
 	std::array<NetAddress, MAX_SLOTS> addresses{}; ///< per slot, the network players' addresses (the local one is its own socket's)
 	std::array<bool, MAX_SLOTS> networkSlot{};     ///< the human slots of the game
 	// WOTR2 milestone 9: the online battle keeps the war's relay seat while its tactical game uses compact player slots (RW 0x6B5E3E).

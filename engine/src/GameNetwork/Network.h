@@ -177,7 +177,7 @@ struct NetworkConfig
 	// run-ahead's frame when every peer can still learn of it in time (Network::setFrameDue; OpenBFME's own, retail always waits the full frame + 1)
 	bool earlyOrders = true;
 	int maxRunAhead = 25;  ///< frames (5 s)
-	int crcInterval = 100; ///< GameInfo::getCRCInterval; 0 = no CRC exchange
+	int crcInterval = 100; ///< GameInfo::getCRCInterval; 0 = no CRC exchange. A game takes its lobby's (LANAPI / LobbyStart / the online START: 10)
 	// lane MP-2: the disconnect path (GameNetwork/DisconnectManager.h)
 	bool disconnectPath = true;
 	NetworkSettings settings;                       ///< GameData's network timing (NetworkDisconnectTime, NetworkPlayerTimeoutTime, ...)

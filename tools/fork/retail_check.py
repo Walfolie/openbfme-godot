@@ -4,7 +4,11 @@
 The public pull request checks (.github/workflows/pr.yml) have no game files, so every retail test SKIPs there. A self-hosted GitHub runner would
 run them, but tools/release/public_workflows.py refuses one in .github/workflows (a pull request from anyone would run code on the owner's PC),
 so this check runs locally instead, on the tree checked out here. What it runs, without stopping at the first failure (run_tests.bat does):
-  1. the C++ unit tests (engine/build/openbfme_tests.exe, run from engine/build as run_tests.bat does);
+  1. the C++ unit tests (engine/build/openbfme_tests.exe, run from engine/build as run_tests.bat does). With --jobs N the test files are split over
+     N processes run at once: the networking files (fixed LAN ports 8086 .. 8093, timing, desync dumps in the working directory) stay together in
+     one process, the others are dealt out in turn, and each process runs in its own working directory (engine/build-shard-<n>, ignored) so
+     files written under relative names never collide. Every process loads the game data itself: mind the memory (a full run was once stopped
+     for want of it);
   2. the simulation floating-point audit (tools/sim/sim_audit.py);
   3. Godot: --import, the headless smoke test, then the windowed shader, tangent convention and road shader tests (unless --no-godot).
 RW_GAME_DAT defaults to <ROTWK_INSTALL>/game.dat, so the binary-fact tests run too.
@@ -13,7 +17,7 @@ SKIPs the install cannot change are listed, not failed: a test pinned to English
 symbolic links, an optional tool input (OPENBFME_ASSET_PACK). The summary (summary.json, summary.txt) and every step's log go to --out
 (default workspace/fork/retail/<time>, an ignored folder: logs may quote game text, and nothing derived from game files is committed).
 
-    python tools/fork/retail_check.py [--tests "<doctest --source-file filter>"] [--no-godot] [--out DIR]
+    python tools/fork/retail_check.py [--tests "<doctest --source-file filter>"] [--jobs N] [--no-godot] [--out DIR]
 Needs ROTWK_INSTALL, BFME2_INSTALL and (unless --no-godot) GODOT; run it from the MSVC environment (vcvars64) as run_tests.bat is.
 """
 from __future__ import annotations
@@ -35,6 +39,23 @@ SUMMARY = re.compile(r"^\[doctest\] test cases:\s*(\d+)\s*\|\s*(\d+) passed\s*\|
 FAILURE = re.compile(r"^(.+?\.(?:cpp|h))\((\d+)\): (?:ERROR|FATAL ERROR): (.*)$", re.M)
 SKIP = re.compile(r"^.*?\bSKIP: (.*)$", re.M)
 NAMED_UNSET = re.compile(r"\((?:set )?([A-Z][A-Z0-9_]+)(?: unset)?\)")
+# the test files that open sockets or run peers: one process, in file order (the LAN ports are fixed; the peer tests are timing-sensitive)
+NETWORK_FILE = re.compile(r"^test_(lan|mp\d|mpdrop|net|online|p16|relay|rejoin|spectate|smooth_net|uberjoin|chat|sdk2_net|wotr\d+_(net|online)|cross)")
+
+
+def shards(files: list[str], jobs: int) -> list[list[str]]:
+    """The test files split for `jobs` processes: shard 0 holds every networking file (and its share of the rest), the others the rest in turn."""
+    if jobs <= 1:
+        return [files]
+    out: list[list[str]] = [[] for _ in range(jobs)]
+    rest = []
+    for f in files:
+        (out[0] if NETWORK_FILE.match(f) else rest).append(f)
+    # the networking shard is the slow one: it takes a smaller share of the rest
+    order = list(range(1, jobs)) * 2 + [0]
+    for i, f in enumerate(rest):
+        out[order[i % len(order)]].append(f)
+    return [s for s in out if s]
 
 
 def classify_skip(text: str, unset: set[str]) -> str:
@@ -66,6 +87,21 @@ def parse_unit_log(text: str, unset: set[str]) -> dict:
     return {"cases": dict(zip(("total", "passed", "failed", "skipped"), cases)) if cases else None, "failures": failures, "skips": skips}
 
 
+def merge_units(parts: list[dict]) -> dict:
+    """One unit result from the shards' (the case counts summed; a shard without a summary leaves the whole without one)."""
+    if len(parts) == 1:
+        return parts[0]
+    cases = None
+    if all(p["cases"] for p in parts):
+        cases = {k: sum(p["cases"][k] for p in parts) for k in ("total", "passed", "failed")}
+        cases["skipped"] = parts[0]["cases"]["total"] + parts[0]["cases"]["skipped"] - cases["total"]  # every shard sees every case
+    skips: dict[str, list[str]] = {"data": [], "language": [], "other": []}
+    for p in parts:
+        for kind, lines in p["skips"].items():
+            skips[kind] += [s for s in lines if s not in skips[kind]]
+    return {"cases": cases, "failures": sorted({f for p in parts for f in p["failures"]}), "skips": skips}
+
+
 def run(step: str, cmd: list[str], cwd: Path, env: dict, out: Path) -> int:
     log = out / f"{step}.log"
     print(f"== {step}: {' '.join(cmd)}", flush=True)
@@ -78,6 +114,7 @@ def run(step: str, cmd: list[str], cwd: Path, env: dict, out: Path) -> int:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--tests", default="", help="a doctest --source-file filter (e.g. '*test_fb7*'); default every test")
+    ap.add_argument("--jobs", type=int, default=1, help="unit test processes run at once (networking files stay in one)")
     ap.add_argument("--no-godot", action="store_true", help="skip the Godot smoke and shader tests")
     ap.add_argument("--out", type=Path, default=None)
     a = ap.parse_args()
@@ -94,8 +131,30 @@ def main() -> int:
     if not tests.is_file():
         print(f"ERROR: {tests} not found; run build.bat first", file=sys.stderr)
         return 1
-    steps["unit"] = run("unit", [str(tests)] + ([f"--source-file={a.tests}"] if a.tests else []), tests.parent, env, out)
-    unit = parse_unit_log((out / "unit.log").read_text(encoding="utf-8", errors="replace"), unset)
+    if a.jobs <= 1:
+        steps["unit"] = run("unit", [str(tests)] + ([f"--source-file={a.tests}"] if a.tests else []), tests.parent, env, out)
+        logs = [out / "unit.log"]
+    else:
+        if a.tests:
+            print("ERROR: --tests and --jobs together are not supported (the shards are whole files)", file=sys.stderr)
+            return 1
+        files = sorted(p.name for p in (ROOT / "engine" / "tests").glob("test_*.cpp"))
+        procs = []
+        for n, group in enumerate(shards(files, a.jobs)):
+            cwd = ROOT / "engine" / f"build-shard-{n}"
+            cwd.mkdir(exist_ok=True)
+            log = out / f"unit-{n}.log"
+            cmd = [str(tests), "--source-file=" + ",".join("*" + f for f in group)]
+            print(f"== unit shard {n}: {len(group)} files ({log})", flush=True)
+            f = open(log, "w", encoding="utf-8", errors="replace")
+            procs.append((n, subprocess.Popen(cmd, cwd=cwd, env=env, stdout=f, stderr=subprocess.STDOUT), f))
+        for n, proc, f in procs:
+            code = proc.wait()
+            f.close()
+            print(f"   shard {n} exit {code}", flush=True)
+            steps[f"unit-{n}"] = code
+        logs = [out / f"unit-{n}.log" for n, _, _ in procs]
+    unit = merge_units([parse_unit_log(p.read_text(encoding="utf-8", errors="replace"), unset) for p in logs])
     if unit["cases"] is None:
         problems.append("the unit tests printed no doctest summary (a crash?)")
     steps["sim_audit"] = run("sim_audit", [sys.executable, str(ROOT / "tools" / "sim" / "sim_audit.py"), "--build", str(ROOT / "engine" / "build")],

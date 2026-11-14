@@ -123,7 +123,7 @@ public:
 		bool broadcast = true;              ///< send to 255.255.255.255 (and to 127.0.0.1)
 		std::vector<std::uint32_t> extraTargets; ///< more addresses to send the lobby's messages to (tests: 127.0.0.1 only)
 		int runAhead = 1;                   ///< the started game's (lane NETLAG-1: RotWK's frame + 1, was 2)
-		int crcInterval = 100;
+		int crcInterval = 10; ///< fork CRCFREQ-1: 10 frames (2 s; was 100, 20 s), measured at 0.85% of the logic step at 2900 objects (test_perf2_bench.cpp)
 		// lane PLATFORMICON-1: the one value this player tells the others of its game (PLATFORM_INFO); None: nothing is sent
 		PlatformKind platform = PlatformKind::None; // the game's glue sets localPlatform()
 		// lane MP-2 (review): the ranges a slot's fields are checked against before a request or the host's options are applied (-1 is random / none;

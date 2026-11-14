@@ -7,6 +7,7 @@
 
 #include "Common/Recorder.h"
 #include "Common/Crc32.h"
+#include "GameNetwork/LANAPI.h"
 #include "GameNetwork/LANLobby.h"
 #include "GameNetwork/ProfileIdentity.h"
 #include "GameNetwork/NetPacket.h"
@@ -1672,4 +1673,12 @@ TEST_CASE("net core r3 (fix 2): an ancient ack after more than 2^31 records issu
 	CHECK_FALSE(rig.tb->allAcked(0));
 	rig.send(craftPacket(0, 0x80000003u, 0, {}));
 	CHECK(rig.tb->allAcked(0));
+}
+
+// Fork lane CRCFREQ-1: a multiplayer game compares the state hash every 10 logic frames (2 s; was 100, 20 s), so a desync is found ten times sooner
+// and its breakdown is at most 10 frames from the divergence. The LAN lobby's options and the lobby START carry it into every game they make
+TEST_CASE("crcfreq1: the LAN lobby's and the lobby START's CRC interval is 10 frames")
+{
+	CHECK(LANAPI::Options().crcInterval == 10);
+	CHECK(LobbyStart().crcInterval == 10);
 }

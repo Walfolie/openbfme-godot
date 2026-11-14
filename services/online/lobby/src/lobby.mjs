@@ -683,7 +683,7 @@ export class Lobby {
     this.env = env;
     this.config = {
       runAhead: 1, // lane NETLAG-1: RotWK's command delay, the current frame + 1 (was 2); the peers raise it on a slow link
-      crcInterval: 100,
+      crcInterval: 10, // fork CRCFREQ-1: 10 frames (2 s; was 100, 20 s), measured at 0.85% of the logic step at 2900 objects (test_perf2_bench.cpp)
       ticketSeconds: 6 * 3600,
       sessionSeconds: 30 * 24 * 3600,
       requireInstall: false,

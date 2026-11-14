@@ -194,7 +194,7 @@ struct Args
 	std::vector<std::string> slots;
 	int frames = 600;
 	int runAhead = 1; // lane NETLAG-1 (was 2)
-	int crcInterval = 100;
+	int crcInterval = 10; // fork CRCFREQ-1: 10 frames (2 s; was 100, 20 s), measured at 0.85% of the logic step at 2900 objects (test_perf2_bench.cpp)
 	bool script = false, realtime = false;
 	// lane NETLAG-2: --script-phase MS|random: the scripted orders go out MS ms after the frame they are issued on began (random: uniform 0 .. 199 per
 	// frame, a human's click lands anywhere in the 200 ms frame), not at its start; the click-to-effect times then sample the whole frame

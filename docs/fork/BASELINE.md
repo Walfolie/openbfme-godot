@@ -55,6 +55,23 @@ The allied blob's contact pairs per frame: mean 4348, peak 5248. The big battle'
 pinned vectors (`engine/tests/data/perf1/big_battle_400.hashes`, `skirmish4_6000.hashes`): this MSVC build ends both
 runs in the same state as upstream's hosts.
 
+## The CRC frame (phase 1, lane CRCFREQ-1)
+
+`openbfme_tests --no-skip --test-case="perf2 bench: the CRC*"`: three copies of the big battle (2872 objects at the start), 200 frames, wall clock.
+A CRC frame computes the state hash breakdown (the hash, its sections and every object's hash); every other frame of a recorded game the plain hash.
+
+| | Logic step | Plain hash | Breakdown | Extra per frame at interval 100 | at interval 10 |
+|---|---:|---:|---:|---:|---:|
+| Before (a second, serial crc walk of every object) | 41.8 ms | 8.8 ms | 17.5 ms | 0.087 ms (0.21%) | 0.87 ms (2.08%) |
+| After (the per-object hashes taken from the hash's own work) | 31.9 ms | 4.6 ms | 7.3 ms | 0.027 ms (0.09%) | 0.27 ms (0.85%) |
+
+The machine was busier during the first run (the plain hash itself took twice as long), so compare the extra cost's share, not the milliseconds.
+Multiplayer games now exchange the CRC every 10 frames (2 s). Still open for phase 5: the plain hash every frame of a recorded game
+(4.6 ms at 2900 objects).
+
+Upstream flake seen on the way: `net retail hud5` (Helm's Deep gates) counted 6, 8 and 14 gate commands on the same code (its floor is 8). The
+count depends on the peers' timing (orders may run a frame early), while the lockstep holds: 0 desyncs, every frame's hash equal.
+
 ## Not measured yet
 
 - `tools/net/mp3_soak.sh` and `cross_os_lockstep.sh` (bash, Linux hosts): Phase 2 turns them into the nightly soak.

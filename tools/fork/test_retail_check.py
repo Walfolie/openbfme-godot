@@ -41,3 +41,24 @@ def test_skips_without_the_installs():
 
 def test_no_summary_is_reported_as_none():
     assert rc.parse_unit_log("crashed\n", set())["cases"] is None
+
+
+def test_shards_keep_the_networking_files_together():
+    files = ["test_a.cpp", "test_net_core.cpp", "test_b.cpp", "test_online3_rejoin.cpp", "test_c.cpp", "test_relay_auth.cpp", "test_d.cpp",
+             "test_mp2_lan.cpp", "test_wotr8_net.cpp", "test_e.cpp"]
+    out = rc.shards(files, 3)
+    net = {"test_net_core.cpp", "test_online3_rejoin.cpp", "test_relay_auth.cpp", "test_mp2_lan.cpp", "test_wotr8_net.cpp"}
+    assert net <= set(out[0])
+    assert not any(net & set(s) for s in out[1:])
+    assert sorted(f for s in out for f in s) == sorted(files)  # every file once
+    assert rc.shards(files, 1) == [files]
+
+
+def test_merge_sums_the_shards():
+    a = rc.parse_unit_log("SKIP: x is pinned to the English retail data; the install is German: not run\n"
+                          "[doctest] test cases:   10 |   9 passed | 1 failed |  90 skipped\n", set())
+    b = rc.parse_unit_log("[doctest] test cases:   30 |  30 passed | 0 failed |  70 skipped\n", set())
+    m = rc.merge_units([a, b])
+    assert m["cases"] == {"total": 40, "passed": 39, "failed": 1, "skipped": 60}
+    assert len(m["skips"]["language"]) == 1
+    assert rc.merge_units([a, rc.parse_unit_log("crash\n", set())])["cases"] is None
