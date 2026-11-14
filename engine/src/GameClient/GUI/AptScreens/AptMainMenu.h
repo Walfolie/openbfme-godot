@@ -143,5 +143,9 @@ private:
 		float base[6] = {}, written[6] = {};
 	};
 	std::vector<MovedClip> m_extraMoved;
+	std::vector<MovedClip> m_barMoved; // fork REMASTER-0: the bar's entries moved into My Heroes' gap
+	bool m_barKnown = false;           // the gap was measured (My Heroes was on the stage once): its slot and place, kept while it is not
+	float m_barSlot = 0.0f, m_barGoneX = 0.0f;
 	void updateExtraRows();
+	void closeBarGap(AptSpriteInst &root); // fork REMASTER-0
 };

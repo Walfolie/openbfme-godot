@@ -561,6 +561,57 @@ bool AptMainMenu::refusedByProduct(const std::string &command)
 	return true;
 }
 
+// fork REMASTER-0 (owner 2026-11-14: no gap where My Heroes was): the entries after My Heroes move left by its slot (its distance to the next entry,
+// or to the previous one when it is last) and the whole bar right by half of that, so the bar stays centred and keeps the movie's own spacing.
+// MOVIE FACTS (read 2026-11-14): RotWK's bar is SoloPlayNav 109.5, MultiPlayNav 310.5, OptionsNav 511.3, MyHeroes 715.2, QuitMainMenu 917.3 (x, about
+// 202 apart); BFME2 1.06's is TutorialsNav 94.0, SoloPlayNav 278.8, MultiPlayNav 463.8, OptionsNav 650.3, then the smaller MyHeores 870.1 and
+// QuitMainMenu 988.5. The timeline's matrix stays the base (baseOf / write), so a frame that places an entry again is moved once, never twice
+void AptMainMenu::closeBarGap(AptSpriteInst &root)
+{
+	struct Entry
+	{
+		AptCharacterInst *inst;
+		AptMatrix base;
+		bool gone;
+	};
+	std::vector<Entry> bar;
+	for (const char *name : { "TutorialsNav", "SoloPlayNav", "MultiPlayNav", "OptionsNav", "MyHeroes", "MyHeores", "QuitMainMenu" })
+	{
+		if (AptCharacterInst *c = root.childByName(name))
+		{
+			const std::string n = name;
+			bar.push_back({ c, baseOf(m_barMoved, *c), n == "MyHeroes" || n == "MyHeores" });
+		}
+	}
+	std::sort(bar.begin(), bar.end(), [](const Entry &a, const Entry &b) { return a.base.tx < b.base.tx; });
+	size_t gone = bar.size();
+	for (size_t i = 0; i < bar.size(); ++i)
+	{
+		gone = bar[i].gone ? i : gone;
+	}
+	if (gone < bar.size() && bar.size() >= 2)
+	{
+		m_barSlot = gone + 1 < bar.size() ? bar[gone + 1].base.tx - bar[gone].base.tx : bar[gone].base.tx - bar[gone - 1].base.tx;
+		m_barGoneX = bar[gone].base.tx;
+		m_barKnown = true;
+	}
+	if (!m_barKnown)
+	{
+		return; // My Heroes has not been on the stage yet: nothing to close
+	}
+	// also while My Heroes is off the stage (RotWK's open Solo Play list takes the other entries off it): the entries left keep their places
+	for (const Entry &e : bar)
+	{
+		if (e.gone)
+		{
+			continue;
+		}
+		AptMatrix to = e.base;
+		to.tx += m_barSlot * 0.5f - (e.base.tx > m_barGoneX ? m_barSlot : 0.0f);
+		write(m_barMoved, *e.inst, e.base, to);
+	}
+}
+
 void AptMainMenu::updateRemasterEdition()
 {
 	AptSpriteInst *root = level() >= 0 ? windows().apt().level(level()) : nullptr;
@@ -576,6 +627,7 @@ void AptMainMenu::updateRemasterEdition()
 			heroes->visible = false;
 		}
 	}
+	closeBarGap(*root);
 	AptCharacterInst *navInst = root->childByName("SoloPlayNav");
 	AptSpriteInst *nav = navInst ? navInst->asSprite() : nullptr;
 	if (!nav)

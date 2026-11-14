@@ -3566,6 +3566,36 @@ TEST_CASE("remaster0 menu retail: the remaster edition hides My Heroes, disables
 				REQUIRE_MESSAGE(c, nav);
 				CHECK_MESSAGE(c->globallyVisible(), nav);
 			}
+			// the bar closes My Heroes' gap and stays centred: against the full game's bar, every entry left of it moves right by half its slot, every
+			// entry right of it left by half (the slot: My Heroes to the next entry, as the movie spaces them)
+			ShellFx full(*movie, "");
+			full.tick(2);
+			full.shell->push("MainMenu.apt");
+			full.tick(10);
+			REQUIRE_MESSAGE(full.wm->invokeAS(full.shell->top()->level(), "ShowMainMenu", {}, nullptr, &error), error);
+			full.tick(90);
+			AptSpriteInst *fullRoot = full.wm->apt().level(full.shell->top()->level());
+			REQUIRE(fullRoot);
+			const char *heroesName = movie == &mount ? "MyHeroes" : "MyHeores";
+			const float heroesX = fullRoot->childByName(heroesName)->matrix.tx;
+			const float slot = fullRoot->childByName("QuitMainMenu")->matrix.tx - heroesX; // Quit follows My Heroes in both movies
+			int moved = 0;
+			for (const char *nav : { "TutorialsNav", "SoloPlayNav", "MultiPlayNav", "OptionsNav", "QuitMainMenu" })
+			{
+				AptCharacterInst *before = fullRoot->childByName(nav);
+				AptCharacterInst *after = root->childByName(nav);
+				if (!before)
+				{
+					CHECK_MESSAGE(after == nullptr, nav); // RotWK has no TutorialsNav
+					continue;
+				}
+				REQUIRE_MESSAGE(after, nav);
+				const float want = before->matrix.tx + slot * 0.5f - (before->matrix.tx > heroesX ? slot : 0.0f);
+				CHECK_MESSAGE(after->matrix.tx == doctest::Approx(want), nav); // tolerance: the float sum of the move
+				CHECK_MESSAGE(after->matrix.ty == before->matrix.ty, nav);
+				++moved;
+			}
+			CHECK(moved == (movie == &mount ? 4 : 5));
 		}
 		ShellFx fx(*movie, "");
 		fx.environment.remasterEdition = true;
