@@ -1689,6 +1689,11 @@ func _process(delta: float) -> void:
 		# lane WORKERFAIL-1: the logic worker stopped on an exception: named to the player and in the crash report, not a crash from the next HUD wait
 		var logic_failure: String = _world.logic_failure()
 		if not logic_failure.is_empty():
+			# fork CRASH-1: in a network game the others are told at once (the leave of the quit menu's Exit: PLAYERLEAVE): they play on instead of
+			# waiting out the disconnect timeout for a player whose game has stopped
+			if _world.net_status().get("active", false):
+				print("GAME NET leaving the game: the logic stopped")
+				_world.net_finish()
 			_fail("The game logic stopped with an internal error " + logic_failure)
 			return
 		if _crash_test_logic and _state == State.PLAYING:
