@@ -38,6 +38,7 @@ SUBSET = [
     "tools/net/test_cross_os_lockstep.py",
     "tools/net/test_mp3_perf_table.py",
     "tools/net/test_online_client.py",
+    "tools/net/test_soak.py",
     "tools/net/test_toolchain_matrix.py",
     "tools/net/test_user_agents.py",
     "tools/object_oracle/test_object_oracle.py",
