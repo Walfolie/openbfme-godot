@@ -256,6 +256,10 @@ public:
 
 	// the desyncs seen (ZH sawCRCMismatch); a report is complete when every slot's half arrived
 	const std::vector<DesyncReport> &desyncs() const { return m_desyncs; }
+	// fork CRCFREQ-1: only the first reports of a game carry the breakdowns (the local half is kept and sent, a DesyncDump is written); a later one
+	// names its frame and the CRCs only. A game that has desynced stays desynced, and with a CRC every 10 frames every 2 s would add a report holding
+	// every object's hash from every peer (and a dump with a copy of the replay). Retail reports a game's desync once (TheGameLogic + 0x1BC)
+	static constexpr size_t kDesyncReportsWithBreakdown = 3;
 	bool sawCRCMismatch() const { return !m_desyncs.empty(); }
 	// the CRCs checked so far (frames whose CRCs all agreed)
 	unsigned long long crcChecksPassed() const { return m_crcChecksPassed; }

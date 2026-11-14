@@ -6,6 +6,8 @@
 #include "Common/Player.h"
 #include "GameNetwork/DesyncDump.h"
 
+#include <algorithm>
+
 std::vector<int> NetGameSession::disconnectedPlayerIndices() const
 {
 	std::vector<int> players;
@@ -718,7 +720,8 @@ void NetGameSession::writeDesyncDumps()
 		return;
 	}
 	const std::vector<DesyncReport> &reports = m_network->desyncs();
-	for (size_t i = 0; i < reports.size(); ++i)
+	// fork CRCFREQ-1: the reports with breakdowns only (a later report has none, and a dump copies the whole replay)
+	for (size_t i = 0; i < std::min(reports.size(), Network::kDesyncReportsWithBreakdown); ++i)
 	{
 		if (i >= m_dumpedHalves.size())
 		{

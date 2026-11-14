@@ -1119,7 +1119,7 @@ void Network::checkCRCs(UnsignedInt frame, const std::map<int, std::uint32_t> &c
 	else
 	{
 		r.frame = described->second;
-		const auto half = m_localHalves.find(r.frame);
+		const auto half = m_desyncs.size() < kDesyncReportsWithBreakdown ? m_localHalves.find(r.frame) : m_localHalves.end();
 		if (half != m_localHalves.end())
 		{
 			r.halves[m_config.localSlot] = half->second;
@@ -1133,6 +1133,11 @@ void Network::checkCRCs(UnsignedInt frame, const std::map<int, std::uint32_t> &c
 	}
 	for (size_t i = 0; i < m_orphanHalves.size();)
 	{
+		if (m_desyncs.size() >= kDesyncReportsWithBreakdown)
+		{
+			m_orphanHalves.clear(); // fork CRCFREQ-1: no later report takes a half
+			break;
+		}
 		if (m_orphanHalves[i].frame == r.frame)
 		{
 			r.halves[m_orphanHalves[i].slot] = m_orphanHalves[i];

@@ -85,6 +85,8 @@ python tools/fork/retail_check.py --tests "*test_fb7*" --no-godot
 python tools/fork/upstream_sync.py                     # what upstream has that the fork lacks, and whether a merge conflicts
 python tools/replay/desync_bisect.py --replay-a A.replay --replay-b B.replay   # two peers' replays: the first frame, section, object and part they differ in
 python -m pytest tools/replay/test_desync_bisect_retail.py                      # the bisector's acceptance: a planted object desync in a two-peer game
+python tools/replay/desync_bisect.py --dump DESYNC-Frame<N>-openbfme-<player>.txt  # one player's desync report (the game's desyncs folder): the objects that differ
+python tools/net/toolchain_matrix.py --peer msvc=engine/build/openbfme_peer.exe --peer llvm-mingw=build/windows/build/openbfme_peer.exe
 ```
 
 Both need the MSVC environment (`vcvars64`) and `ROTWK_INSTALL`, `BFME2_INSTALL` (and `GODOT` for the Godot steps), as `run_tests.bat` does.

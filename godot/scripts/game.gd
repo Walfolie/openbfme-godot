@@ -6517,7 +6517,10 @@ func _wotr_net_options() -> Dictionary:
 
 
 func _net_begin() -> void:
-	var opts := {"script": _net_script, "desync_dir": OS.get_user_data_dir(), "census": not _net_census.is_empty(), "early_orders": _net_early_orders}
+	# fork DESYNC-1: the desync reports (and the copies of this player's replay) in a folder of their own, the one the desync box opens
+	var desync_dir := OS.get_user_data_dir().path_join("desyncs")
+	DirAccess.make_dir_recursive_absolute(desync_dir)
+	var opts := {"script": _net_script, "desync_dir": desync_dir, "census": not _net_census.is_empty(), "early_orders": _net_early_orders}
 	if not _net_record.is_empty():
 		opts["record"] = _net_record
 	elif _record:
@@ -7184,8 +7187,13 @@ func _print_replay_watch(frame: int) -> void:
 func _show_desync_box(dumps: Array) -> void:
 	var title: String = _shell.fetch_text("GUI:DesyncTitle").text
 	var text: String = _shell.fetch_text("GUI:DesyncText").text
+	var folder := ""
 	if not dumps.is_empty():
 		text += "\n\n" + str(dumps[0])
+		# fork DESYNC-1: what to do with it. Both players' reports name the first frame and the objects that differ; with both replays
+		# tools/replay/desync_bisect.py names the part of the object
+		folder = str(dumps[0]).get_base_dir()
+		text += "\n\nThe desync report and a copy of your replay are in that folder. Send them, and the other player's, with your bug report."
 	print("GAME NET desync message: %s / %s" % [title, text])
 	var layer := CanvasLayer.new()
 	layer.layer = 95
@@ -7209,6 +7217,15 @@ func _show_desync_box(dumps: Array) -> void:
 	body.text = text
 	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	box.add_child(body)
+	if not folder.is_empty():
+		var open := Button.new()
+		open.text = "Open folder"
+		open.pressed.connect(func(): OS.shell_open(folder))
+		box.add_child(open)
+		var copy := Button.new()
+		copy.text = "Copy path"
+		copy.pressed.connect(func(): DisplayServer.clipboard_set(folder))
+		box.add_child(copy)
 	var ok := Button.new()
 	ok.text = _shell.fetch_text("GUI:Ok").text
 	ok.pressed.connect(func(): layer.queue_free())

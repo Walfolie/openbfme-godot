@@ -65,3 +65,39 @@ def test_an_object_part_by_word_index():
     assert db.first_word_difference([1, 2, 3], [1, 2, 4]) == 2
     assert db.first_word_difference([1, 2], [1, 2, 3]) == 2
     assert db.first_word_difference([1, 2], [1, 2]) is None
+
+
+DUMP = """Frame #152
+
+local slot 0
+DESYNC: the state hash of logic frame 150 differs (CRCs compared on frame 152)
+
+---------------------------------------------------------
+slot 0 (frame 150, hash 0x444A4F92)
+section frame, object ids, RNG 0x00000011
+section players and teams 0x45A060C5
+object 7 GondorFighter 0xAAAAAAAA
+object 179 MordorFortress 0xEFB1720E
+
+---------------------------------------------------------
+slot 1 (frame 150, hash 0xF2485945)
+section frame, object ids, RNG 0x00000011
+section players and teams 0x45A060C5
+object 7 GondorFighter 0xAAAAAAAA
+object 179 MordorFortress 0x8C905C16
+
+--------------------------------------------------------
+REPLAY FILE
+---------------------------------------------------------
+C:/x/A.replay (copied to C:/x/DESYNC-Frame152.replay)
+---------------------------------------------------------
+"""
+
+
+def test_one_players_desync_report_names_the_objects():
+    frame, halves = db.parse_dump(DUMP)
+    assert frame == 150 and sorted(halves) == [0, 1]
+    assert halves[0]["sections"][0]["name"] == "frame, object ids, RNG"
+    d = db.diff_breakdowns(halves[0], halves[1])
+    assert d["sections"] == []
+    assert [(o["id"], o["template"]) for o in d["objects"]] == [(179, "MordorFortress")]

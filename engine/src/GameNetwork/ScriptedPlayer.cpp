@@ -445,12 +445,20 @@ unsigned ScriptedPlayer::issue(LiveGame &game, int playerIndex, int startPos, Co
 	const unsigned turn = (unsigned)(f / 120);
 	switch (k)
 	{
+	// fork TOOLCHAIN-1: one statement per rule. Both append to `out`, and the operands of + are evaluated in an unspecified order: MSVC and Clang
+	// queued the two rules' commands in opposite orders, so the same scripted game recorded different command lists (tools/net/toolchain_matrix.py)
 	case 4:
-		return produce(logic, playerIndex, m, turn, out) + construct(logic, playerIndex, m, home->location, turn, out);
+	{
+		const unsigned n = produce(logic, playerIndex, m, turn, out);
+		return n + construct(logic, playerIndex, m, home->location, turn, out);
+	}
 	case 5:
 		return research(playerIndex, m, turn, out);
 	case 6:
-		return foundation(playerIndex, m, turn, out) + wall(logic, playerIndex, m, home->location, turn, out);
+	{
+		const unsigned n = foundation(playerIndex, m, turn, out);
+		return n + wall(logic, playerIndex, m, home->location, turn, out);
+	}
 	default:
 		return spells(logic, playerIndex, home->location, turn, out);
 	}

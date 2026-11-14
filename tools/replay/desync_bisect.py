@@ -16,6 +16,10 @@ A planted desync (openbfme_peer --inject-divergence F: one more unit of money on
 The Uber profile keeps no words of its hash: its games are bisected to the frame and the differing objects only (step 2 fails with a message).
 
     python tools/replay/desync_bisect.py --replay-a A.replay --replay-b B.replay [--peer EXE] [--peer-b EXE] [--out DIR] [--max-objects N]
+    python tools/replay/desync_bisect.py --dump DESYNC-Frame<N>-<exe>-<player>.txt
+The second form reads one player's desync report (GameNetwork/DesyncDump.h, the file the game writes into its desyncs folder): it holds every
+peer's sections and object hashes of the first differing frame, so it names the sections and the objects that differ without any replay (not the
+part of an object: the words are not in it).
 Needs ROTWK_INSTALL / BFME2_INSTALL as openbfme_peer does. Exit 0: a divergence was found and broken down; 3: the replays agree on every frame both
 recorded; 2: a re-simulation did not reproduce its recording (the breakdown of that side is not the peer's state); 1: an error.
 """
@@ -159,14 +163,51 @@ def summary_lines(d: dict) -> list[str]:
     return lines
 
 
+def parse_dump(text: str) -> tuple[int | None, dict[int, dict]]:
+    """A DesyncDump file: the frame and, per slot, a breakdown as parse_breakdown returns it (sections and objects without words)."""
+    halves: dict[int, dict] = {}
+    current = None
+    frame = None
+    for line in text.splitlines():
+        if line.startswith("slot ") and "(frame " in line:
+            slot = int(line.split()[1])
+            frame = int(line.split("(frame ")[1].split(",")[0])
+            current = halves[slot] = {"frame": frame, "total": int(line.rsplit("hash ", 1)[1].rstrip(")"), 16), "sections": [], "objects": {}}
+        elif current is not None and line.startswith("section "):
+            name, value = line[len("section "):].rsplit(" ", 1)
+            current["sections"].append({"index": len(current["sections"]), "value": int(value, 16), "name": name, "words": []})
+        elif current is not None and line.startswith("object "):
+            fields = line.split()
+            current["objects"][int(fields[1])] = {"value": int(fields[-1], 16), "template": " ".join(fields[2:-1]), "spans": [], "words": []}
+        elif line.startswith("REPLAY FILE"):
+            current = None  # the replay section: no more half lines
+    return frame, halves
+
+
+def main_dump(path: Path, max_objects: int) -> int:
+    frame, halves = parse_dump(path.read_text(encoding="utf-8", errors="replace"))
+    if len(halves) < 2:
+        print(f"{path}: {len(halves)} peer half in the report (the others had not arrived when it was written): nothing to compare", file=sys.stderr)
+        return 1
+    slots = sorted(halves)
+    worst = 3
+    for other in slots[1:]:
+        d = diff_breakdowns(halves[slots[0]], halves[other], max_objects)
+        print(f"slot {slots[0]} (A) against slot {other} (B):")
+        print("\n".join(summary_lines(d)))
+        worst = 0 if d["sections"] or d["objects_differing"] or d["only_a"] or d["only_b"] else worst
+    return worst
+
+
 def peer(exe: Path, args: list[str]) -> subprocess.CompletedProcess:
     return subprocess.run([str(exe), *args], capture_output=True, text=True, encoding="utf-8", errors="replace")
 
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    ap.add_argument("--replay-a", type=Path, required=True)
-    ap.add_argument("--replay-b", type=Path, required=True)
+    ap.add_argument("--replay-a", type=Path)
+    ap.add_argument("--replay-b", type=Path)
+    ap.add_argument("--dump", type=Path, help="one player's desync report instead of two replays")
     ap.add_argument("--peer", type=Path, default=DEFAULT_PEER, help="the openbfme_peer that recorded A (and B, unless --peer-b)")
     ap.add_argument("--peer-b", type=Path, default=None, help="the openbfme_peer of B's build, when it differs")
     ap.add_argument("--out", type=Path, default=None, help="where the breakdowns and the report go (default: a new temporary folder)")
@@ -174,6 +215,10 @@ def main() -> int:
     ap.add_argument("--inject-b", type=int, default=None, help="B is a peer run with --inject-divergence FRAME (a test of the bisector)")
     ap.add_argument("--inject-object-b", type=int, default=None, help="B is a peer run with --inject-object-divergence FRAME (a test of the bisector)")
     a = ap.parse_args()
+    if a.dump:
+        return main_dump(a.dump, a.max_objects)
+    if not a.replay_a or not a.replay_b:
+        ap.error("--replay-a and --replay-b (or --dump)")
     peer_b = a.peer_b or a.peer
     for exe in {a.peer, peer_b}:
         if not exe.is_file():
