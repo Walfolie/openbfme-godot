@@ -158,6 +158,9 @@ void storeUberHashes(const char *name, const std::vector<std::uint32_t> &hashes)
 // pin: fork lane SPELLRECHARGE-1 ports SpellRechargeModifierUpgrade: the map's signal fires (StartsActive) count for their owner from frame 0 (Player
 // + 0x71C / + 0x718). Checked: with the fires' build-complete and capture handlers switched off the old vector holds in every frame. Re-measured
 // once (OPENBFME_UBER1_REGEN=1, Windows MSVC).
+// pin: fork lane FIRELOGIC-1 ports TheFireLogicSystem: a FireLogicNugget shot at a position lights the terrain fire grid (which burns and spreads) and is no
+// longer counted in the hashed unportedNuggets counter. Checked: with the grid switched off and the nugget counted again the previous vector held in every
+// frame. Re-measured once (OPENBFME_UBER1_REGEN=1, Windows MSVC).
 TEST_CASE("uber1: the Uber battle hashes as its pin vector in every frame with 1, 4 and 16 logic threads and in a repeated run; the hash's own jobs run on "
 		  "workers; Faithful hashes differently and serially")
 {

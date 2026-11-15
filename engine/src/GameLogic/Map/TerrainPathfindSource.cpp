@@ -164,6 +164,38 @@ bool TerrainPathfindSource::passagePlane(const Coord3D &pos) const
 	return m_map.planeBit(m_map.m_planeB, cx, cy);
 }
 
+// fork lane FIRELOGIC-1: RW 0x462520 -> 0x466AC3: the heightmap cell border - cvttss2si(v * -0.1f) (SSE, RW 0xBDBC70) per axis, below 0 -> 0, at or past
+// extent - 1 -> extent - 2; then RW 0x4ADC78: the byte of the plane at WorldHeightMap + 0x8C (index y * width + x), 0 outside the extent or the plane
+int TerrainPathfindSource::fireCellTypeAt(float x, float y) const
+{
+	const int border = m_map.getBorderSize();
+	int cx = border - SimMath::cvttss2si(SimMath::mulf32(x, -0.1f));
+	int cy = border - SimMath::cvttss2si(SimMath::mulf32(y, -0.1f));
+	if (cx < 0)
+	{
+		cx = 0;
+	}
+	if (cy < 0)
+	{
+		cy = 0;
+	}
+	const int w = m_map.getXExtent(), h = m_map.getYExtent();
+	if (cx >= w - 1)
+	{
+		cx = w - 2;
+	}
+	if (cy >= h - 1)
+	{
+		cy = h - 2;
+	}
+	if (cx < 0 || cy < 0 || cx >= w || cy >= h)
+	{
+		return 0;
+	}
+	const size_t i = (size_t)cy * (size_t)w + (size_t)cx;
+	return i < m_map.m_flammability.size() ? m_map.m_flammability[i] : 0;
+}
+
 bool TerrainPathfindSource::isUnderwater(float x, float y, float *waterZ, float *terrainZ) const
 {
 	const float tz = m_terrain.getGroundHeight(x, y);

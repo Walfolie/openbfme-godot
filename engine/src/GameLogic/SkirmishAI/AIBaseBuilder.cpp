@@ -18,6 +18,7 @@
 #include "GameLogic/Module/DozerAIUpdate.h"
 #include "GameLogic/Module/ProductionUpdate.h"
 #include "GameLogic/Object/Object.h"
+#include "GameLogic/FireLogicSystem.h"
 #include "GameLogic/SimMath.h"
 #include "Common/Upgrade.h"
 #include "GameLogic/SkirmishAI/AIStatCollector.h"
@@ -511,9 +512,25 @@ int checkRequest(GameLogic &logic, const AIBuildRequest &req, Player &player)
 		return (int)can;
 	}
 	// RW 0x97DAFC -> 9 (lane DECOMP-2; BFME2 decomp AIBuildableStructure.cpp AIBuildableStructure::rva00573B5E, tier A): a burning terrain cell near the site. The
-	// site +- 150 in steps of 15 (21 x 21 points from the slot 13 position), each point's cell floor((v + 0.5) * 0.1) of TheFireLogicSystem's grid (RW 0xDE46A8: + 0x70
-	// the columns, + 0x78 / + 0x7C the bounds, 20-byte cells whose word + 6 > 0 burns). That grid is the terrain fire system (FireLogicNugget, the weather's burn decay
-	// at + 0x98, the GPU_TERRAINFIRE particles: S-191), which this port does not have: no cell can burn, so the scan finds nothing (S-414)
+	// site +- 150 in steps of 15 (21 x 21 points from the slot 13 position, x outside), each point (x87: (float)d + v) asked for its ground height (TerrainLogic
+	// vslot 0x18, the result dropped), then its cell floor((v + 0.5f) * 0.1f) of TheFireLogicSystem's grid (fork lane FIRELOGIC-1): a cell whose burn (+ 6) is above 0
+	{
+		const FireLogicSystem &fire = logic.fireLogic();
+		for (int dx = -150; dx <= 150 && fire.hasGrid(); dx += 15)
+		{
+			for (int dy = -150; dy <= 150; dy += 15)
+			{
+				const float x = SimMath::pc24Add((float)dx, site.x);
+				const float y = SimMath::pc24Add((float)dy, site.y);
+				const FireLogicSystem::Cell *c = fire.cell(SimMath::floorToInt(SimMath::pc24Mul(SimMath::pc24Add(x, 0.5f), 0.1f)),
+					SimMath::floorToInt(SimMath::pc24Mul(SimMath::pc24Add(y, 0.5f), 0.1f)));
+				if (c && c->burn > 0)
+				{
+					return 9;
+				}
+			}
+		}
+	}
 	if (BuildPlacement::isLocationLegalToBuild(logic, site, *tt->getFinalOverride(), req.siteAngle(), kCheckLegalOptions, dozer, &player) != LBC_OK)
 	{
 		return 10;

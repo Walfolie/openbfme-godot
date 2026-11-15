@@ -30,6 +30,9 @@ public:
 	};
 	std::vector<Water> water;
 	float (*heightFn)(float x, float y) = nullptr;
+	int fireType = 0; // fork lane FIRELOGIC-1: the terrain fire cell type (fireCellTypeAt) of every cell, or of the cells within fireRadius of fireCentre
+	float fireRadius = -1.0f;
+	float fireCentreX = 0.0f, fireCentreY = 0.0f;
 
 	void getMaximumPathfindExtent(float &loX, float &loY, float &hiX, float &hiY) const override
 	{
@@ -43,6 +46,11 @@ public:
 	bool impassableToPlayers(float x, float y) const override { return bit18.count({ (int)(x / 10.0f), (int)(y / 10.0f) }) != 0; }
 	bool extraPass(float x, float y) const override { return bit21.count({ (int)(x / 10.0f), (int)(y / 10.0f) }) != 0; }
 	bool thirdPlane(float, float) const override { return false; }
+	int fireCellTypeAt(float x, float y) const override
+	{
+		const float dx = x - fireCentreX, dy = y - fireCentreY;
+		return fireRadius < 0.0f || dx * dx + dy * dy <= fireRadius * fireRadius ? fireType : 0;
+	}
 	float getGroundHeight(float x, float y) const override { return heightFn ? heightFn(x, y) : 0.0f; }
 	bool isUnderwater(float x, float y, float *waterZ, float *terrainZ) const override
 	{

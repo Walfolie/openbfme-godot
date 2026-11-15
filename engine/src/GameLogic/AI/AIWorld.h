@@ -209,6 +209,8 @@ public:
 
 	// ---- objects ----
 	ObjectPathfindAdapter &adapterFor(Object &obj);
+	// the INI macros TheAI was made with (fork lane FIRELOGIC-1: the templates' Flammability blocks)
+	const INIMacroTable &iniMacros() const;
 	ObjectPathfindAdapter *findAdapter(PathfindObjectID id) const;
 	// RW 0x68BBE0 (BFME2 0x68B511), Object's layer: the ground when + 0x4AC (BFME2 + 0x48C) is set, else + 0x428 (lane WALLMELEE-1): the object's
 	// pathfinder layer (its adapter's), the ground for an object without one. INFERENCE (S-4840): + 0x4AC (set for a horde and its members by HordeContain's

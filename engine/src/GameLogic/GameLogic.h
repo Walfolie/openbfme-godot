@@ -100,6 +100,7 @@ class VictoryConditions;
 class BuildAssistantSell;
 class InvisibilityManager;
 class DOTManager;
+class FireLogicSystem;
 class TerrainTrees;
 class SkirmishAIManager;
 class ShroudManager;
@@ -455,6 +456,8 @@ public:
 	const InvisibilityManager &invisibility() const { return *m_invisibility; }
 	// lane DECOMP-1: TheGameLogic + 0x174, the DOTManager (DOTNugget's damage over time; update in phase 1 after the weather, RW 0x62E8CF)
 	DOTManager &dot() { return *m_dot; }
+	FireLogicSystem &fireLogic() { return *m_fire; } // fork lane FIRELOGIC-1: TheFireLogicSystem (RW 0xDE46A8)
+	const FireLogicSystem &fireLogic() const { return *m_fire; }
 	const DOTManager &dot() const { return *m_dot; }
 	// lane SPELL-3: TheTerrainLogic + 0x578, the map's optimized trees (GameLogic/Map/TerrainTrees.h); filled by MapObjectLoop, hashed once a tree changed
 	TerrainTrees &trees() { return *m_trees; }
@@ -1019,6 +1022,7 @@ private:
 	std::unique_ptr<GlobalWeatherSystem> m_weather; // lane SPELL-2
 	std::unique_ptr<InvisibilityManager> m_invisibility; // lane STEALTH-1
 	std::unique_ptr<DOTManager> m_dot;                   // lane DECOMP-1
+	std::unique_ptr<FireLogicSystem> m_fire;             // fork lane FIRELOGIC-1
 	std::unique_ptr<TerrainTrees> m_trees;               // lane SPELL-3
 	std::unique_ptr<ScriptEngine> m_scriptEngine;        // lane SCRIPT-1
 	CastleTemplateStore m_castleTemplates;

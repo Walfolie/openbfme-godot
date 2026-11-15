@@ -590,6 +590,9 @@ TEST_CASE("perf1 bench: 4-player skirmish (medium computer players, 20 game minu
 // pin: fork lane SPAWNUNIT-1 ports SpawnUnitBehavior's update: the Elven citadel's module now wakes every 5 frames (it slept as the unported shell),
 // so the skirmish vector moves; with the update switched off (and asleep from construction) the previous vectors held in every frame. Re-measured
 // once (OPENBFME_PERF1_REGEN=1, Windows MSVC).
+// pin: fork lane FIRELOGIC-1 ports TheFireLogicSystem: a FireLogicNugget shot at a position lights the terrain fire grid (which burns and spreads) and is no
+// longer counted in the hashed unportedNuggets counter. Checked: with the grid switched off and the nugget counted again the previous vector held in every
+// frame. Re-measured once (OPENBFME_PERF1_REGEN=1, Windows MSVC).
 TEST_CASE("perf1: the big battle (400 frames) and a 4-player AI skirmish after another AI game (6000 frames) hash as the build before PERF-1 did in every frame")
 {
 	// Ambient movement: target idle wandering adds RNG draws and origin state,

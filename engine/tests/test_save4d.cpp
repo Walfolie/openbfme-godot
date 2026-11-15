@@ -598,7 +598,7 @@ TEST_CASE("save4d T4: the registry gives the seven SAVE-4d blocks their xfer; wi
 			ours.push_back(b.token + (b.snapshot ? " xfer" : " declared") + (b.lists & (1u << SNAPSHOT_DEEPCRC_LOGICONLY) ? " +deepcrc" : ""));
 		}
 	}
-	CHECK(ours == std::vector<std::string>{ "obfme:ScriptEngine xfer +deepcrc", "obfme:Victory xfer", "obfme:Weather xfer", "obfme:Economy xfer",
+	CHECK(ours == std::vector<std::string>{ "obfme:ScriptEngine xfer +deepcrc", "obfme:Victory xfer", "obfme:Weather xfer", "obfme:FireLogic xfer", "obfme:Economy xfer",
 					  "obfme:CreateAHero xfer", "obfme:TerrainTrees xfer", "obfme:LargeGroupAudio xfer" });
 	std::vector<std::uint8_t> out;
 	std::string error;
@@ -608,7 +608,7 @@ TEST_CASE("save4d T4: the registry gives the seven SAVE-4d blocks their xfer; wi
 
 TEST_CASE("save4d T8 as far as the blocks allow: the SAVE-4d blocks of a game played under Uber are the same bytes at 1, 4 and 16 logic threads")
 {
-	const std::vector<std::string> kOurs = { "obfme:ScriptEngine", "obfme:Victory", "obfme:Weather", "obfme:Economy", "obfme:CreateAHero",
+	const std::vector<std::string> kOurs = { "obfme:ScriptEngine", "obfme:Victory", "obfme:Weather", "obfme:FireLogic", "obfme:Economy", "obfme:CreateAHero",
 		"obfme:TerrainTrees", "obfme:LargeGroupAudio" };
 	const int before = JobSystem::logic().threadCount();
 	std::vector<std::uint8_t> first;

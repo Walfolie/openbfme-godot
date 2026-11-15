@@ -846,8 +846,8 @@ std::vector<std::string> SkirmishAIManager::stopLines()
 		"max(unit builder + 0x48, difficulty * 5000) once the AI has more than 2 economy structures; a request with + 0x21 is checked with the reserve added "
 		"(RW 0x9ED82A) and draws its shortfall at the execution, RW 0x96190B / 0x9ED951 / 0x9A1AA2 -> 0x99E79A), expansions (bases after the first); "
 		"INFERENCE: the game slot's player template (RW 0x90CE35) is the player's own",
-		"[S-414] skirmish ai base builder inference: RW 0x97DAFC (TheFireLogicSystem's burning cells within 150 of the site -> 9) never objects: the terrain fire "
-		"system is not ported (S-191); the CRT acos / sin / cos of the angle and the rotation are SimMath's deterministic versions (S-167)",
+		"[S-414] skirmish ai base builder inference: the CRT acos / sin / cos of the angle and the rotation are SimMath's deterministic versions (S-167); RW 0x97DAFC "
+		"(TheFireLogicSystem's burning cells within 150 of the site -> 9) reads the fire grid since fork lane FIRELOGIC-1",
 		"[S-890] skirmish ai dozer manager inference (lane AI-2): a dozer is free again whenever its task ends (RW 0x88BF4E's notification is found only on the "
 		"repair-complete branch RW 0x88DBCE); the starting objects are registered in object list order (RW 0x6A9E48 walks each player's own list); the object "
 		"+ 0x4D0 byte that RW 0x6A9D9C / 0x6A99CB test is taken as clear; the created-structure call (RW 0x6AA688 -> RW 0x8F06FF(0)) is not made because the "

@@ -16,6 +16,7 @@
 #include "GameLogic/Combat/ObjectWeapons.h"
 #include "GameLogic/Damage.h"
 #include "GameLogic/FXEvents.h"
+#include "GameLogic/FireLogicSystem.h"
 #include "GameLogic/GameLogic.h"
 #include "GameLogic/Module/AIUpdate.h"
 #include "GameLogic/Module/ActiveBody.h"
@@ -1008,7 +1009,7 @@ namespace
 {
 // ---- lane NUGGET-1: the nuggets whose effect had no port (S-321). Every slot's first argument in RW is the firing Weapon; its + 8 (the owner's id) is all a slot
 // reads of it: `sourceId` below. The dispatch is fireWeaponTemplate's (RW 0x6CCECC .. 0x6CCF17, slot 12 false for all of these): a victim takes slot 1 then slot 5,
-// no victim slot 2 then slot 6. FireLogicNugget (TheFireLogicSystem, S-191) stays counted (SlaveAttackNugget: lane MODCOMPAT-MOD1, SlaveAttack below) ----
+// no victim slot 2 then slot 6. FireLogicNugget goes to TheFireLogicSystem (fork lane FIRELOGIC-1, below) (SlaveAttackNugget: lane MODCOMPAT-MOD1, SlaveAttack below) ----
 namespace NuggetEffects
 {
 const int kEnemiesBit = 1, kNeutralBit = 2, kAlliesBit = 4; // PartitionFilterRelationship (RW 0xC11DC0): 1 << Relationship
@@ -1792,6 +1793,16 @@ unsigned DeliverNuggets(GameLogic &logic, ObjectID sourceId, const WeaponTemplat
 			}
 			continue;
 		}
+		if (n.kind() == NUGGET_FIRE_LOGIC)
+		{
+			// fork lane FIRELOGIC-1: as fireWeaponTemplate dispatches it (slots 12 and 1 false: a victim gets nothing; no victim: slot 2, true, then slot 6 at the
+			// position, RW 0x9120E6): a projectile's warhead at the ground lights it
+			if (!victim && pos)
+			{
+				logic.fireLogic().deliverNugget(static_cast<const FireLogicNugget &>(n), sourceId, *pos);
+			}
+			continue;
+		}
 		if (n.kind() != NUGGET_DAMAGE && n.kind() != NUGGET_DOT && n.kind() != NUGGET_PROJECTILE && n.kind() != NUGGET_HORDE_ATTACK)
 		{
 			// lane NUGGET-1: the warhead path dispatches them as fireWeaponTemplate does
@@ -2080,10 +2091,18 @@ void ObjectWeaponDelivery::fireWeaponTemplate(const WeaponBonus &bonus, int curB
 				SlaveAttack::deliver(logic, m_source->getID(), victim != nullptr, pos);
 			}
 			break;
+		case NUGGET_FIRE_LOGIC:
+			// fork lane FIRELOGIC-1: slot 12 is false (RW 0x851E97) and slot 1 too (RW 0x8F8014): a shot with a victim never reaches slot 5 (RW 0x912087); no
+			// victim: slot 2 (RW 0x8470FA, true), then slot 6 at the position (RW 0x9120E6). Only a position hit lights the ground (a projectile's warhead)
+			if (!victim)
+			{
+				logic.fireLogic().deliverNugget(static_cast<const FireLogicNugget &>(n), m_source->getID(), pos);
+			}
+			break;
 		default:
 			if (!NuggetEffects::deliver(logic, n, t, m_source->getID(), victim, pos)) // lane NUGGET-1
 			{
-				++logic.combat().counters().unportedNuggets; // FireLogicNugget (S-191)
+				++logic.combat().counters().unportedNuggets;
 			}
 			break;
 		}

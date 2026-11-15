@@ -33,6 +33,7 @@
 #include "GameLogic/Module/UpgradeModule.h"
 #include "GameLogic/ObjectFilter.h"
 #include "GameLogic/ObjectFilterMatch.h"
+#include "GameLogic/FireLogicSystem.h"
 #include "GameLogic/SimMath.h"
 
 #include "Common/Player.h"
@@ -415,7 +416,7 @@ void Object::buildModules()
 	}
 }
 
-void Object::reactToTransformChange(const Coord3D *oldPos, float)
+void Object::reactToTransformChange(const Coord3D *oldPos, float oldAngle)
 {
 	if (m_ai)
 	{
@@ -430,6 +431,16 @@ void Object::reactToTransformChange(const Coord3D *oldPos, float)
 		shroud->markDirty(*this, false); // RW 0x68B862 -> 0xB4E290 (VIS-1): the shroud record re-covers and re-looks in the next shroud update
 	}
 	m_logic.partition().markDirty(*this); // RW 0x68B862 / 0x68B244 -> 0xA39570 (lane MODULES-2): re-linked in the next partition update
+	// fork lane FIRELOGIC-1: RW 0x69355D: when a position axis (RW 0x68B777) or the angle (RW 0x68B7E8) moved by more than 0.01 (|a - b| on the x87, RW
+	// 0xBE5600), a registered object registers again with TheFireLogicSystem (RW 0x693626 .. 0x693642)
+	{
+		auto moved = [](float a, float b) { return SimMath::absD(SimMath::pc24SubW((double)a, (double)b)) > (double)0.01f; };
+		const Coord3D &p = *getPosition();
+		if (!oldPos || moved(p.x, oldPos->x) || moved(p.y, oldPos->y) || moved(p.z, oldPos->z) || moved(getOrientation(), oldAngle))
+		{
+			m_logic.fireLogic().objectMoved(*this);
+		}
+	}
 	if (oldPos && (oldPos->x != getPosition()->x || oldPos->y != getPosition()->y || oldPos->z != getPosition()->z))
 	{
 		updateTriggerAreaFlags(); // RW 0x69355D: only when the position changed (RW 0x68B777)
@@ -706,7 +717,7 @@ void Object::geometryChanged(bool pathfind)
 			ai->addObjectToPathfindMap(*this);      // RW 0x6E85E9
 		}
 	}
-	// + 0x4BC >= 0: RW 0x68836C / 0x688354 (not ported, S-142)
+	m_logic.fireLogic().objectMoved(*this); // fork lane FIRELOGIC-1: + 0x4BC >= 0: RW 0x68836C then RW 0x688354 (RW 0x68B2A6)
 }
 
 void Object::joinTeam(Team *team)

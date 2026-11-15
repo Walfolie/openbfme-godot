@@ -22,6 +22,7 @@
 #include "Common/Thing/ThingTemplate.h"
 #include "GameLogic/AI/AIPathfindConfig.h"
 #include "GameLogic/AI/AIPathfindStops.h"
+#include "GameLogic/FireLogicSystem.h"
 #include "GameLogic/GameLogic.h"
 #include "GameLogic/SkirmishAI/SkirmishAIManager.h"
 #include "GameLogic/AI/AIGroup.h"
@@ -1050,6 +1051,10 @@ void AIWorld::newMap(const PathfindTerrain &terrain)
 	m_pathfinder->newMap(terrain, &structures);
 	m_pathfinder->setUberLimits(m_logic.uber()); // lane PATHPERF-4
 	m_mapReady = m_pathfinder->isMapReady();
+	// fork lane FIRELOGIC-1: RW 0x62FDB1, just after the pathfinder's new map (RW 0x6EA1F2): TheFireLogicSystem's grid (RW 0x687748). The objects already in the
+	// world register again (none in a game: the map's objects come later; the test worlds place theirs first)
+	m_logic.fireLogic().newMap(&terrain);
+	m_logic.fireLogic().loadPostProcess();
 }
 
 // ---- objects ----------------------------------------------------------------------------------------------------------------------
@@ -1066,6 +1071,11 @@ ObjectPathfindAdapter &AIWorld::adapterFor(Object &obj)
 		slot = std::make_unique<ObjectPathfindAdapter>(*this, obj);
 	}
 	return *slot;
+}
+
+const INIMacroTable &AIWorld::iniMacros() const
+{
+	return m_env->macros;
 }
 
 ObjectPathfindAdapter *AIWorld::findAdapter(PathfindObjectID id) const

@@ -692,9 +692,9 @@ TEST_CASE("nugget1 damage field: FireWeaponUpdate's snapshot loads version 1, re
 	CHECK(victim->getBodyModule()->getHealth() < hp);
 }
 
-// the kind left counted (S-321): FireLogicNugget (TheFireLogicSystem, S-191) still goes to unportedNuggets; every other kind of retail weapon.ini is
+// no kind is left counted: FireLogicNugget goes to TheFireLogicSystem (fork lane FIRELOGIC-1, test_firelogic.cpp); every kind of retail weapon.ini is
 // delivered (lane MODCOMPAT-MOD1: SlaveAttackNugget orders the expansion's slave, test_slavewatcher.cpp; a source without a SlaveWatcherBehavior: nothing)
-TEST_CASE("nugget1: only FireLogic nuggets are still counted as not delivered")
+TEST_CASE("nugget1: no retail nugget kind is counted as not delivered")
 {
 	if (!haveWorld())
 	{
@@ -709,8 +709,7 @@ TEST_CASE("nugget1: only FireLogic nuggets are still counted as not delivered")
 	CHECK(counted == 0u);
 	const WeaponTemplate fire = only(weapon("BabyDrakeInferno"), NUGGET_FIRE_LOGIC);
 	DeliverNuggets(a.logic, src->getID(), fire, WeaponBonus{}, nullptr, &at, false, &counted);
-	CHECK(counted == fire.m_nuggets.size());
-	counted = 0;
+	CHECK(counted == 0u);
 	// the mine drop last: it fades its source
 	for (const char *name : { "AngmarMorgramirRuinWeapon", "CreateAHeroStealMoney", "MordorGateWatchersFearWeapon", "EarthquakePhaseInitialWeapon",
 		     "IsengardSharkuManEaterGrab", "MordorCatapultRockFlame", "IsengardExplosiveMineDroppingWeapon" })

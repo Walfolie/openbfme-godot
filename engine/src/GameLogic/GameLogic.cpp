@@ -38,6 +38,7 @@
 #include "GameLogic/Economy.h"
 #include "GameLogic/ExperienceWorld.h"
 #include "GameLogic/CreateAHeroSystem.h"
+#include "GameLogic/FireLogicSystem.h"
 #include "GameLogic/GlobalWeatherSystem.h"
 #include "GameLogic/Object/AttributeModifierPool.h"
 #include "GameLogic/Object/Object.h"
@@ -70,6 +71,7 @@ GameLogic::GameLogic(ThingFactory &things, ModuleFactory &modules, PlayerList &p
 	, m_weather(std::make_unique<GlobalWeatherSystem>(*this))
 	, m_invisibility(std::make_unique<InvisibilityManager>(*this))
 	, m_dot(std::make_unique<DOTManager>(*this)) // lane DECOMP-1
+	, m_fire(std::make_unique<FireLogicSystem>(*this)) // fork lane FIRELOGIC-1
 	, m_trees(std::make_unique<TerrainTrees>(*this)) // lane SPELL-3
 	, m_scriptEngine(std::make_unique<ScriptEngine>(*this)) // lane SCRIPT-1
 {
@@ -105,6 +107,7 @@ void GameLogic::friend_objectEnteredWorld(Object &obj)
 {
 	invisibilityNoteCreated(obj); // lane STEALTH-2: RW 0x69A6BF, just before the world entry RW 0x69A6C6
 	partitionEnter(obj); // lane MODULES-2: RW 0x68E3B6, before the script world (RW 0x68E3E2)
+	m_fire->registerObject(obj); // fork lane FIRELOGIC-1: RW 0x68E3C2 (RW 0x688354)
 	if (m_enteredWorld)
 	{
 		m_enteredWorld(obj);
@@ -125,6 +128,7 @@ void GameLogic::friend_objectLeftWorld(Object &obj)
 	if (inWorld)
 	{
 		partitionLeave(obj); // lane MODULES-2: RW 0x68C1B4
+		m_fire->unregisterObject(obj); // fork lane FIRELOGIC-1: RW 0x68C1E5 (RW 0x68836C)
 		if (m_leftWorld)
 		{
 			m_leftWorld(obj);
@@ -141,7 +145,7 @@ void GameLogic::friend_objectLeftWorld(Object &obj)
 }
 
 // lane GARRISON-1: RW 0x68E31F from a contain (the order of the ported parts: the shroud record RW 0x68E352, the partition RW 0x68E3B6, the script world RW 0x68E3E2;
-// the radar RW 0xB6C470 and RW 0x688354 are not ported, S-142; lane DECOMP-3: RW 0x6A9D9C last)
+// the radar RW 0xB6C470 is not ported, S-142; RW 0x688354 is TheFireLogicSystem's (fork lane FIRELOGIC-1); lane DECOMP-3: RW 0x6A9D9C last)
 void GameLogic::friend_containEnterWorld(Object &obj)
 {
 	if (obj.isInWorld())
@@ -156,6 +160,7 @@ void GameLogic::friend_containEnterWorld(Object &obj)
 		}
 	}
 	partitionEnter(obj);
+	m_fire->registerObject(obj); // fork lane FIRELOGIC-1: RW 0x68E3C2
 	if (m_enteredWorld)
 	{
 		m_enteredWorld(obj);
@@ -173,7 +178,7 @@ void GameLogic::friend_containEnterWorld(Object &obj)
 }
 
 // lane GARRISON-1: RW 0x68C18F from a contain (the shroud record RW 0x68C19B, the partition RW 0x68C1B4, the script world RW 0x68C1D0; the radar RW 0xB6C480 and
-// RW 0x68836C are not ported, S-142; lane DECOMP-3: RW 0x6A99CB last)
+// RW 0x68836C (TheFireLogicSystem's, fork lane FIRELOGIC-1) is ported, the radar is not (S-142); lane DECOMP-3: RW 0x6A99CB last)
 void GameLogic::friend_containLeaveWorld(Object &obj)
 {
 	if (!obj.isInWorld())
@@ -188,6 +193,7 @@ void GameLogic::friend_containLeaveWorld(Object &obj)
 		}
 	}
 	partitionLeave(obj);
+	m_fire->unregisterObject(obj); // fork lane FIRELOGIC-1: RW 0x68C1E5
 	if (m_leftWorld)
 	{
 		m_leftWorld(obj);
@@ -633,6 +639,7 @@ void GameLogic::update(int phase)
 		runRow(ROW_SUBSYSTEMS_PHASE1);
 		runRow(ROW_LOGIC_CRC);
 		runRow(ROW_RECORDER_STATS);
+		m_fire->update(); // fork lane FIRELOGIC-1: RW 0x62E8BB, TheFireLogicSystem vslot 0x28 (RW 0x6886E0), just before the weather
 		m_weather->update(); // RW 0x62E8BE: TheGlobalWeatherSystem vslot 0x28 (RW 0x71A09E), one of that row's subsystems (lane SPELL-2)
 		m_dot->update(); // RW 0x62E8C9 .. 0x62E8CF: GameLogic + 0x174, the DOTManager (lane DECOMP-1)
 		m_invisibility->update(); // RW 0x62E8D4 .. 0x62E8DA: GameLogic + 0x178, the last of that row, before the command list (lane STEALTH-1)
@@ -1044,6 +1051,9 @@ void GameLogic::reset()
 {
 	m_missionObjectives.reset(); // lane CAMPUI-1: TheMissionObjectiveTracker's reset (RW 0x835E03): a new game has no list until its map.ini's
 	m_radarEventNotices.clear(); // lane BACKLOG3: a new game's radar starts empty (the sequence goes on: a client's cursor stays behind it)
+	// fork lane FIRELOGIC-1: TheFireLogicSystem's grid goes first (RW 0x6873F7): the objects below leave no cell to restore, and the terrain it reads may
+	// already be gone
+	m_fire->clear();
 	// ZH GameLogic::reset: every object goes; the scheduler vectors are cleared with their modules' indices
 	m_current = nullptr;
 	while (m_objectHead)
@@ -1403,6 +1413,10 @@ std::uint32_t GameLogic::hashState(std::vector<StateHashSection> *sections, std:
 		section("create-a-hero", [&](StateHasher &x) { x.addU32(m_createAHeroes->crc()); });
 	}
 	section("weather", [&](StateHasher &x) { m_weather->crc(x); }); // lane SPELL-2
+	if (m_fire->touched()) // fork lane FIRELOGIC-1: only a game whose fire grid changed has the section
+	{
+		section("fire logic", [&](StateHasher &x) { m_fire->crc(x); });
+	}
 	section("invisibility", [&](StateHasher &x) { m_invisibility->crc(x); }); // lane STEALTH-1
 	if (!m_dot->empty())
 	{
@@ -1750,6 +1764,10 @@ GameLogic::Report GameLogic::report() const
 		"what else initObject (RW 0x693D0C, tier B edited, no decomp source) does beyond Object::friend_initObject; ported since (lane BACKLOG2 audit): the experience tracker (XP-1, RW 0x69A606), "
 		"partition registration (MODULES-2, the world entry RW 0x69A6C6), the radar step (RW 0x69A66D -> Radar::addObject RW 0x6D9042: RADAR-1 applies its rules to the live objects at "
 		"every draw; the radar lists are client state), initObject's upgrade refresh and command points (RW 0x693D38 / 0x693D51), the safe occlusion frame (OCCLUDE-1: RW 0x69A687)");
+	for (const std::string &s : m_fire->stopLines()) // fork lane FIRELOGIC-1
+	{
+		r.stops.push_back(s);
+	}
 	r.stops.push_back("[S-146] players: a Player carries the index, name, faction template, type, colour, money, default team and relationships only; energy, sciences, upgrades, build list, AI, command points and the spell book belong to the lanes that port them");
 	r.stops.push_back("[S-149] ActiveBody / HordeContain: the payload creation site (here: onCreate; RW 0x871B9B, HordeContain vslot 0x70, has no located caller), the members' team and facing are inference; ActiveBody's FX / OCL names are stored unresolved (lane DECOMP-1: GlobalData + 0xB4 / + 0xB8 are UnitDamagedThreshold / UnitReallyDamagedThreshold, GameData table RW 0xBFF580 rows RW 0xBFF980 / 0xBFF990; the DamagePercentToUnits trimming never runs in retail)");
 	for (const std::string &u : unportedPhaseWork())

@@ -344,6 +344,9 @@ public:
 	// after the cliff plane (RW 0x4B0D46: version 10 and above; MAP-1's m_planeB, OpenSAGE's "PassageWidths"): a formation march narrows on it (AIData
 	// NarrowPassageScale) and does not start into it. False without a map plane
 	virtual bool passagePlane(const Coord3D &pos) const { (void)pos; return false; }
+	// fork lane FIRELOGIC-1: RW W3DTerrainLogic vtable + 0x60 (RW 0x462520 -> 0x466AC3 -> 0x4ADC78): the terrain fire cell type at a world point, the byte plane at
+	// WorldHeightMap + 0x8C (MAP-1's m_flammability; FireLogicSystem.ini's TerrainCellType). 0 (fire resistant) without a map plane
+	virtual int fireCellTypeAt(float x, float y) const { (void)x; (void)y; return 0; }
 	// TerrainLogic::isUnderwater(x, y, &waterZ, &terrainZ)
 	virtual bool isUnderwater(float x, float y, float *waterZ, float *terrainZ) const = 0;
 	virtual float getGroundHeight(float x, float y) const = 0;

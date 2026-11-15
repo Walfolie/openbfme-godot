@@ -24,6 +24,7 @@ list(APPEND OPENBFME_SIM_SOURCES
     src/GameLogic/Module/AimWeaponBehavior.cpp # fork AIM-1
     src/GameLogic/Module/SpellRechargeModifierUpgrade.cpp # fork SPELLRECHARGE-1
     src/GameLogic/Module/DamageFieldUpdate.cpp # fork DAMAGEFIELD-1
+    src/GameLogic/FireLogicSystem.cpp # fork FIRELOGIC-1: TheFireLogicSystem (the terrain fire grid)
 )
 set(OPENBFME_MOD1_TESTS
     tests/test_module_coverage.cpp
@@ -46,4 +47,5 @@ set(OPENBFME_MOD1_TESTS
     tests/test_spell_recharge_modifier.cpp # fork SPELLRECHARGE-1: SpellRechargeModifierUpgrade (synthetic data)
     tests/test_spawnunit_retail.cpp # fork SPAWNUNIT-1: SpawnUnitBehavior's update (retail data)
     tests/test_damage_field.cpp # fork DAMAGEFIELD-1: DamageFieldUpdate (synthetic data)
+    tests/test_firelogic.cpp # fork FIRELOGIC-1: TheFireLogicSystem (synthetic data)
 )

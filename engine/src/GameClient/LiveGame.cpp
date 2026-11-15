@@ -40,6 +40,7 @@
 #include "GameClient/MapScriptSetup.h"
 #include "GameLogic/NewGame/SkirmishSides.h"
 #include "GameLogic/Economy.h"
+#include "GameLogic/FireLogicSystem.h"
 #include "GameLogic/VictoryConditions.h"
 #include "GameLogic/Object/Object.h"
 #include "GameLogic/System/PathfinderResourceTerrain.h"
@@ -409,6 +410,19 @@ bool LiveGame::load(const Options &options, std::string *error)
 	PathfindConfigLoader::applyAIData(m_logic->settings(), aiConfig.pathfind, isBfme1Data(m_fs));
 	m_pathTerrain = std::make_unique<TerrainPathfindSource>(m_terrain, m_map.heightMap, m_map.chunks);
 	m_ai = std::make_unique<AIWorld>(*m_logic, aiConfig, m_world.iniMacros());
+	// fork lane FIRELOGIC-1: TheFireLogicSystem's INI (its init, RW 0x685EA5 with the subsystem's INI load); its grid follows the pathfinder's in newMap below.
+	// BFME1's data is not known to carry the file: without it the grid has no flammable cell type (reported by the system's stop)
+	{
+		FireLogicSettings fire;
+		if (!isBfme1Data(m_fs) || m_fs.doesFileExist("data\\ini\\firelogicsystem.ini"))
+		{
+			if (!FireLogicSettings::load(m_fs, fire, error))
+			{
+				return false;
+			}
+		}
+		m_logic->fireLogic().configure(fire, &m_world.iniMacros());
+	}
 	m_ai->attach();
 	// RW 0x62FDA6 (in 0x62F91A, called at 0x63157B): the pathfinder's map exists BEFORE the map's objects and the starting bases; every object that is placed registers its own
 	// footprint when it is placed (RW 0x62E192 for a map object, RW 0x629EC9 -> 0x6E85E9 for a base object; lane BUILD-1)

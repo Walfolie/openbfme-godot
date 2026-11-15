@@ -22,6 +22,7 @@ public:
 	bool extraPass(float x, float y) const override;
 	bool thirdPlane(float x, float y) const override;
 	bool passagePlane(const Coord3D &pos) const override;
+	int fireCellTypeAt(float x, float y) const override; // fork lane FIRELOGIC-1
 	bool isUnderwater(float x, float y, float *waterZ, float *terrainZ) const override;
 	float getGroundHeight(float x, float y) const override { return m_terrain.getGroundHeight(x, y); }
 
