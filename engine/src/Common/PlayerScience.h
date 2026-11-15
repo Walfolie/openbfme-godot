@@ -145,6 +145,11 @@ public:
 	// Player + 0x718: the recharge time discount RESPECT_RECHARGE_TIME_DISCOUNT powers add to 1.0 (RW 0x6AAAD2; set by RW 0x6AAAEE, 0.0 at init)
 	float rechargeDiscount() const { return m_rechargeDiscount; }
 	void setRechargeDiscount(float d) { m_rechargeDiscount = d; }
+	// Player + 0x71C (fork lane SPELLRECHARGE-1): the count of SpellRechargeModifierUpgrade entries (RW 0x6AAAE0 increments, 0x6AAAE7 decrements, 0x6AAAD9
+	// reads; 0 at init RW 0x6B0463, saved by RW 0x6B282A)
+	int rechargeModifierCount() const { return m_rechargeModifierCount; }
+	void incRechargeModifierCount() { ++m_rechargeModifierCount; }
+	void decRechargeModifierCount() { --m_rechargeModifierCount; }
 	// Player + 0x724: the shared (SharedSyncedTimer) ready frames by special power id, in insertion order (RW 0x6AD180 inserts)
 	unsigned getSharedReadyFrame(unsigned powerId, unsigned now);              // RW 0x6AD26F (absent: inserted at `now`)
 	unsigned peekSharedReadyFrame(unsigned powerId, unsigned now) const;       // the same answer, nothing inserted (display reads only)
@@ -178,6 +183,7 @@ private:
 	unsigned long long m_droppedNotifications = 0;
 	std::uint32_t m_spellBookId = 0;                                   // Player + 0x710
 	float m_rechargeDiscount = 0.0f;                                   // Player + 0x718
+	int m_rechargeModifierCount = 0;                                   // Player + 0x71C (fork lane SPELLRECHARGE-1)
 	std::vector<std::pair<unsigned, unsigned>> m_sharedReadyFrames;    // Player + 0x724
 };
 

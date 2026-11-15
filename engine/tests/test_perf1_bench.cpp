@@ -584,6 +584,9 @@ TEST_CASE("perf1 bench: 4-player skirmish (medium computer players, 20 game minu
 // pin: PORT-12 hashes MinDistFromEdgeOfMapForBuild in GameLogicSettings::crc (RotWK GlobalData +0xA68; BFME2 1.06's data/ini/gamedata.ini carries the
 // same 30.0 row) and refuses a footprint sample inside the active boundary's margin (RW 0x794BF2 .. 0x794C5A): all three vectors move from frame 0.
 // Re-measured once (OPENBFME_PERF1_REGEN=1, Windows MSVC) on this tree with the other open ports merged; every pin above is otherwise as it was.
+// pin: fork lane SPELLRECHARGE-1 ports SpellRechargeModifierUpgrade: the maps' signal fires (StartsActive) count for their owner from frame 0 (Player
+// + 0x71C / + 0x718); the three vectors were re-measured once (OPENBFME_PERF1_REGEN=1, Windows MSVC) after the old ones were checked to hold in every
+// frame with the fires' build-complete and capture handlers switched off.
 TEST_CASE("perf1: the big battle (400 frames) and a 4-player AI skirmish after another AI game (6000 frames) hash as the build before PERF-1 did in every frame")
 {
 	// Ambient movement: target idle wandering adds RNG draws and origin state,

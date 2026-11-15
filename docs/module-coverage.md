@@ -190,7 +190,7 @@ The live report's `unported_modules` (objects alive at the end of the run) of ei
 | 91 | SlaveWatcherBehavior | Behavior | 25 | 19 | missing |
 | 92 | SpawnBehavior | Behavior | 25 | 17 | ported |
 | 93 | StealthDetectorUpdate | Behavior | 25 | 18 | ported |
-| 94 | AimWeaponBehavior | Behavior | 23 | 12 | missing |
+| 94 | AimWeaponBehavior | Behavior | 23 | 12 | ported |
 | 95 | CommandButtonHuntUpdate | Behavior | 23 | 12 | missing |
 | 96 | EvacuateDamage | Behavior | 23 | 19 | ported |
 | 97 | HordeGarrisonContain | Behavior | 23 | 18 | ported |
@@ -258,7 +258,7 @@ The live report's `unported_modules` (objects alive at the end of the run) of ei
 | 159 | DarknessSpecialPower | Behavior | 5 | 1 | ported |
 | 160 | DevastateSpecialPower | Behavior | 5 | 1 | ported |
 | 161 | ElvenWoodSpecialPower | Behavior | 5 | 1 | ported |
-| 162 | FlingPassengerSpecialAbilityUpdate | Behavior | 5 | 3 | missing |
+| 162 | FlingPassengerSpecialAbilityUpdate | Behavior | 5 | 3 | ported |
 | 163 | FreezingRainSpecialPower | Behavior | 5 | 1 | ported |
 | 164 | HordeDispatchSpecialPower | Behavior | 5 | 2 | ported |
 | 165 | HordeTransportContainDamage | Behavior | 5 | 1 | missing |
@@ -334,7 +334,7 @@ The live report's `unported_modules` (objects alive at the end of the run) of ei
 | 235 | ProjectileStreamUpdate | Behavior | 1 | 1 | missing |
 | 236 | SalvageCrateCollide | Behavior | 1 | 1 | parsed only |
 | 237 | ShareExperienceBehavior | Behavior | 1 | 1 | ported |
-| 238 | SpellRechargeModifierUpgrade | Behavior | 1 | 1 | missing |
+| 238 | SpellRechargeModifierUpgrade | Behavior | 1 | 1 | ported |
 | 239 | SplitHordeSpecialPower | Behavior | 1 | 1 | missing |
 | 240 | StrafeAreaUpdate | Behavior | 1 | 1 | missing |
 | 241 | SummonReplacementSpecialAbilityUpdate | Behavior | 1 | 4 | missing |

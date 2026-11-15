@@ -1446,7 +1446,8 @@ void checkAbilities(const std::string &faction)
 			// MOUNTED RequiredConditions of Wind Rider and Poisoned Stinger, no ally in Move Unseen's radius, the OCL of Part the Heavens), the level attack
 			// (S-1223), ActivateModuleSpecialPower's dummy target power; the rest (Faramir's mount toggle in the faction run) are S-863's open entries
 			static const char *const kExplained[] = { "CaptureBuilding", "(no SpecialAbilityUpdate)", "FromFellBeast", "(passive button)", "(fake leadership button)",
-				"TrainArchers", "WindRider", "PoisonedStinger", "MoveUnseen", "PartTheHeavens", "LevelAttack", "ActivateeDummy" };
+				"TrainArchers", "WindRider", "PoisonedStinger", "MoveUnseen", "PartTheHeavens", "LevelAttack", "ActivateeDummy",
+				"ManEaterDrop" }; // fork FLING-1: the drop (FlingPassengerSpecialAbilityUpdate) lets go of the eaten victim; the run casts it with an empty contain (test_fling_passenger.cpp measures the release)
 			bool explained = false;
 			for (const char *e : kExplained)
 			{

@@ -20,6 +20,9 @@ list(APPEND OPENBFME_SIM_SOURCES
     src/GameLogic/Module/AudioLoopUpgrade.cpp # lane MODCOMPAT-MOD1
     src/GameLogic/Module/ClickReactionBehavior.cpp # lane MODCOMPAT-MOD1
     src/GameLogic/Module/EvacuateDamage.cpp # fork EVACUATE-1
+    src/GameLogic/Module/FlingPassengerSpecialAbilityUpdate.cpp # fork FLING-1
+    src/GameLogic/Module/AimWeaponBehavior.cpp # fork AIM-1
+    src/GameLogic/Module/SpellRechargeModifierUpgrade.cpp # fork SPELLRECHARGE-1
 )
 set(OPENBFME_MOD1_TESTS
     tests/test_module_coverage.cpp
@@ -37,4 +40,7 @@ set(OPENBFME_MOD1_TESTS
     tests/test_castle_unpack_script.cpp # lane CASTLE-UNPACK: the castle base script commands (NAMED_BASE_UNPACK*, PLAYER_HAS_N_OR_FEWER_BASES)
     tests/test_modcompat_ai_script.cpp # lane MODCOMPAT-AI: the script conditions and actions the mods' AI scripts need
     tests/test_evacuate_damage.cpp # fork EVACUATE-1: EvacuateDamage (synthetic data)
+    tests/test_fling_passenger.cpp # fork FLING-1: FlingPassengerSpecialAbilityUpdate (synthetic data)
+    tests/test_aim_weapon_behavior.cpp # fork AIM-1: AimWeaponBehavior (synthetic data)
+    tests/test_spell_recharge_modifier.cpp # fork SPELLRECHARGE-1: SpellRechargeModifierUpgrade (synthetic data)
 )

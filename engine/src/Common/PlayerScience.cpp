@@ -57,6 +57,7 @@ void PlayerScience::bind(const PlayerTemplate *pt, const SpellGameMode &mode, Sc
 	++m_noticeGeneration;
 	m_spellBookId = 0;          // RW 0x6B0455
 	m_rechargeDiscount = 0.0f;  // RW 0x6B045B
+	m_rechargeModifierCount = 0; // RW 0x6B0463
 	m_sharedReadyFrames.clear(); // (INFERENCE: a new game's player has no shared timer)
 }
 
@@ -408,6 +409,10 @@ void PlayerScience::crc(StateHasher &h) const
 {
 	h.addU32(m_spellBookId);
 	h.addFloat(m_rechargeDiscount);
+	if (m_rechargeModifierCount != 0) // fork lane SPELLRECHARGE-1: hashed only when set (a player without a signal fire keeps its hash)
+	{
+		h.addU32(0x5E11C000u ^ (std::uint32_t)m_rechargeModifierCount);
+	}
 	h.addU32((std::uint32_t)m_sharedReadyFrames.size());
 	for (const auto &e : m_sharedReadyFrames)
 	{
@@ -555,10 +560,18 @@ void AcquiredScienceQueue::xfer(Xfer &x, const PlayerScience *player)
 // their name keys, as the state hash has them (identical for an identical install).
 void PlayerScience::xfer(Xfer &x)
 {
-	XferVersion v{ 1, 1 };
+	XferVersion v{ 1, 2 }; // fork lane SPELLRECHARGE-1: version 2 adds the recharge modifier count (Player + 0x71C)
 	x.xferVersion(v);
 	x.xferUnsignedInt(&m_spellBookId);
 	x.xferReal(&m_rechargeDiscount);
+	if (v.current >= 2)
+	{
+		x.xferInt(&m_rechargeModifierCount);
+	}
+	else if (x.isLoading())
+	{
+		m_rechargeModifierCount = 0;
+	}
 	x.xferVectorSize(m_sharedReadyFrames, 8);
 	for (auto &e : m_sharedReadyFrames)
 	{

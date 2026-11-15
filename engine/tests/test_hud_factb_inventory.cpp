@@ -62,11 +62,10 @@ TEST_CASE("factb inventory: Isengard and Mordor reach every structure, unit, her
 		{
 			classes.insert(kv.first);
 		}
-		const std::set<std::string> isengard = { "AnnounceBirthAndDeathBehavior", "BaseUpgrade",
-			"EvacuateDamage", "FlingPassengerSpecialAbilityUpdate" }; // lane MODCOMPAT-MOD1 ported GeometryUpgrade, SlaveWatcherBehavior and PickupStuffUpdate; lane FX-4 ported TransitionDamageFX; lane SIEGE-1 SiegeDeployHordeSpecialPower; lane LUMBER1: SupplyCenterCreate / SupplyCenterDockUpdate ported (S-1993)
-		const std::set<std::string> mordor = { "AimWeaponBehavior", "AnnounceBirthAndDeathBehavior", "BaseUpgrade",
-			"EvacuateDamage", // lane SUMMON-1 ported DoCommandUpgrade; lane MODCOMPAT-MOD1 ClickReactionBehavior; lane MODCOMPAT-MOD1 AudioLoopUpgrade
-			"FlingPassengerSpecialAbilityUpdate", "HordeTransportContainDamage", // lane MODCOMPAT-MOD1 ported GeometryUpgrade and GrabPassengerSpecialPower
+		const std::set<std::string> isengard = { "AnnounceBirthAndDeathBehavior", "BaseUpgrade" }; // fork EVACUATE-1 ported EvacuateDamage, fork FLING-1 FlingPassengerSpecialAbilityUpdate; lane MODCOMPAT-MOD1 ported GeometryUpgrade, SlaveWatcherBehavior and PickupStuffUpdate; lane FX-4 ported TransitionDamageFX; lane SIEGE-1 SiegeDeployHordeSpecialPower; lane LUMBER1: SupplyCenterCreate / SupplyCenterDockUpdate ported (S-1993)
+		const std::set<std::string> mordor = { "AnnounceBirthAndDeathBehavior", "BaseUpgrade", // fork AIM-1 ported AimWeaponBehavior, fork EVACUATE-1 EvacuateDamage
+			// lane SUMMON-1 ported DoCommandUpgrade; lane MODCOMPAT-MOD1 ClickReactionBehavior; lane MODCOMPAT-MOD1 AudioLoopUpgrade
+			"HordeTransportContainDamage", // fork FLING-1 ported FlingPassengerSpecialAbilityUpdate; lane MODCOMPAT-MOD1 ported GeometryUpgrade and GrabPassengerSpecialPower
 			"RunOffMapBehavior" }; // lane MODCOMPAT-MOD1 ported SlaveWatcherBehavior, PickupStuffUpdate, AutoPickUpUpdate and BoredUpdate; lane FX-4 ported TransitionDamageFX; lane SIEGE-1 SiegeDeployHordeSpecialPower; lane LUMBER1: SupplyCenterCreate / SupplyCenterDockUpdate ported (S-1993); lane PORT-55 ported SlaughterHordeContain (S-6010)
 		CHECK(classes == (std::string(f) == "FactionIsengard" ? isengard : mordor));
 	}
