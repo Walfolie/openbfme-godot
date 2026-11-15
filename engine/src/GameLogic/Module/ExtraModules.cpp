@@ -9,6 +9,7 @@
 #include "GameLogic/Module/AudioLoopUpgrade.h"
 #include "GameLogic/Module/ClickReactionBehavior.h"
 #include "GameLogic/Module/CritterEmitterUpdate.h"
+#include "GameLogic/Module/DamageFieldUpdate.h"
 #include "GameLogic/Module/EvacuateDamage.h"
 #include "GameLogic/Module/ExtraCreateModules.h"
 #include "GameLogic/Module/ExtraDieModules.h"
@@ -55,6 +56,7 @@ void ExtraModules::registerAll(ModuleFactory &modules)
 	FlingPassengerSpecialAbilityUpdate::registerModule(modules); // fork FLING-1
 	AimWeaponBehavior::registerModule(modules);             // fork AIM-1
 	SpellRechargeModifierUpgrade::registerModule(modules);  // fork SPELLRECHARGE-1
+	DamageFieldUpdate::registerModule(modules);             // fork DAMAGEFIELD-1
 	CommandButtonHuntUpdate::registerModule(modules);       // lane MODCOMPAT-MOD1
 	CritterEmitterUpdate::registerModule(modules); // lane MODCOMPAT-MOD1
 	AudioLoopUpgrade::registerModule(modules);     // lane MODCOMPAT-MOD1

@@ -587,6 +587,9 @@ TEST_CASE("perf1 bench: 4-player skirmish (medium computer players, 20 game minu
 // pin: fork lane SPELLRECHARGE-1 ports SpellRechargeModifierUpgrade: the maps' signal fires (StartsActive) count for their owner from frame 0 (Player
 // + 0x71C / + 0x718); the three vectors were re-measured once (OPENBFME_PERF1_REGEN=1, Windows MSVC) after the old ones were checked to hold in every
 // frame with the fires' build-complete and capture handlers switched off.
+// pin: fork lane SPAWNUNIT-1 ports SpawnUnitBehavior's update: the Elven citadel's module now wakes every 5 frames (it slept as the unported shell),
+// so the skirmish vector moves; with the update switched off (and asleep from construction) the previous vectors held in every frame. Re-measured
+// once (OPENBFME_PERF1_REGEN=1, Windows MSVC).
 TEST_CASE("perf1: the big battle (400 frames) and a 4-player AI skirmish after another AI game (6000 frames) hash as the build before PERF-1 did in every frame")
 {
 	// Ambient movement: target idle wandering adds RNG draws and origin state,

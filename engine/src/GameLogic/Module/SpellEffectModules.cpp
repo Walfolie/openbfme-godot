@@ -236,6 +236,45 @@ UpdateSleepTime FireWeaponUpdate::update()
 	return nextSleep();
 }
 
+// RW 0x89483A
+void FireWeaponUpdate::fireAtVictim(Object *victim)
+{
+	if (!victim)
+	{
+		return;
+	}
+	Object *obj = getObject();
+	if (!obj->logic().aiWorld())
+	{
+		obj->logic().noteStop("[S-924] FireWeaponUpdate: the logic has no AIWorld, the weapons of the effect objects do not fire");
+		++m_unfired;
+		return;
+	}
+	if (m_weapon) // + 0x20
+	{
+		if (weaponHost().extraWeaponStatus(*m_weapon) == WEAPON_READY_TO_FIRE) // RW 0x6CDCE7
+		{
+			weaponHost().fireExtraWeaponForcedAt(*m_weapon, *victim); // RW 0x6CF407
+			++m_shots;
+		}
+		return;
+	}
+	const std::uint32_t now = obj->logic().getFrame();
+	for (Record &r : m_records) // the list at + 0x24
+	{
+		if (!(now > r.fireFrame) || weaponHost().extraWeaponStatus(*r.weapon) != WEAPON_READY_TO_FIRE) // RW 0x894883: jbe skips
+		{
+			continue;
+		}
+		weaponHost().fireExtraWeaponForcedAt(*r.weapon, *victim); // RW 0x6CF407
+		++m_shots;
+		if (r.oneShot)
+		{
+			r.fireFrame = 0xFFFFFFFFu;
+		}
+	}
+}
+
 void FireWeaponUpdate::setWeapon(const WeaponTemplate *tmpl)
 {
 	if (!tmpl)

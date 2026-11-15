@@ -66,8 +66,16 @@
 
 void LogicModules::registerAll(ModuleFactory &modules)
 {
-	// Only its S-207 offer is ported; keep the runtime's unported registration.
+	// S-207's offer and (fork lane SPAWNUNIT-1) the update
 	modules.bindTypedData<SpawnUnitBehaviorModuleData>("SpawnUnitBehavior", MODULETYPE_BEHAVIOR);
+	modules.bindModuleProc("SpawnUnitBehavior", MODULETYPE_BEHAVIOR, [](Thing *thing, const ModuleData *data, const ModuleFactory::ModuleTemplate &) -> std::unique_ptr<Module> {
+		const SpawnUnitBehaviorModuleData *typed = dynamic_cast<const SpawnUnitBehaviorModuleData *>(data);
+		if (!typed)
+		{
+			throw std::logic_error("SpawnUnitBehavior: the module data is not typed");
+		}
+		return std::make_unique<SpawnUnitBehavior>(thing, typed);
+	});
 	modules.bindTypedData<ActiveBodyModuleData>("ActiveBody", MODULETYPE_BEHAVIOR);
 	modules.bindModuleProc("ActiveBody", MODULETYPE_BEHAVIOR, [](Thing *thing, const ModuleData *data, const ModuleFactory::ModuleTemplate &) -> std::unique_ptr<Module> {
 		const ActiveBodyModuleData *typed = dynamic_cast<const ActiveBodyModuleData *>(data);

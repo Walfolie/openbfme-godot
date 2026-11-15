@@ -56,7 +56,7 @@ pinned vectors (`engine/tests/data/perf1/big_battle_400.hashes`, `skirmish4_6000
 runs in the same state as upstream's hosts.
 
 Since fork lane SPELLRECHARGE-1 (2026-11-15) the fork's four vectors (perf1's three, `engine/tests/data/uber1/battle3000_40.hashes`) are its own:
-the maps' signal fires now count for their owner from frame 0. With that module's handlers switched off the old (upstream) vectors still held in every
+the maps' signal fires now count for their owner from frame 0. Fork lane SPAWNUNIT-1 moved the skirmish vector again (the Elven citadel's SpawnUnitBehavior now wakes every 5 frames). With that module's handlers switched off the old (upstream) vectors still held in every
 frame. An upstream merge that moves the vectors must be re-measured on the merged tree (`OPENBFME_PERF1_REGEN=1`, `OPENBFME_UBER1_REGEN=1`).
 
 ## The CRC frame (phase 1, lane CRCFREQ-1)

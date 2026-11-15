@@ -23,6 +23,7 @@ list(APPEND OPENBFME_SIM_SOURCES
     src/GameLogic/Module/FlingPassengerSpecialAbilityUpdate.cpp # fork FLING-1
     src/GameLogic/Module/AimWeaponBehavior.cpp # fork AIM-1
     src/GameLogic/Module/SpellRechargeModifierUpgrade.cpp # fork SPELLRECHARGE-1
+    src/GameLogic/Module/DamageFieldUpdate.cpp # fork DAMAGEFIELD-1
 )
 set(OPENBFME_MOD1_TESTS
     tests/test_module_coverage.cpp
@@ -43,4 +44,6 @@ set(OPENBFME_MOD1_TESTS
     tests/test_fling_passenger.cpp # fork FLING-1: FlingPassengerSpecialAbilityUpdate (synthetic data)
     tests/test_aim_weapon_behavior.cpp # fork AIM-1: AimWeaponBehavior (synthetic data)
     tests/test_spell_recharge_modifier.cpp # fork SPELLRECHARGE-1: SpellRechargeModifierUpgrade (synthetic data)
+    tests/test_spawnunit_retail.cpp # fork SPAWNUNIT-1: SpawnUnitBehavior's update (retail data)
+    tests/test_damage_field.cpp # fork DAMAGEFIELD-1: DamageFieldUpdate (synthetic data)
 )

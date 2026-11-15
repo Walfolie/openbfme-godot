@@ -91,6 +91,14 @@ public:
 	const Weapon *singleWeapon() const { return m_weapon.get(); }
 	void crc(StateHasher &hasher) const override;
 
+protected:
+	UpdateSleepTime nextSleep() const; ///< RW 0x88F0AA
+	ObjectWeapons &weaponHost();
+	// fork lane DAMAGEFIELD-1: RW 0x89483A (DamageFieldUpdate's): with a victim, the single weapon (+ 0x20) when READY_TO_FIRE, else every record whose fire
+	// frame is below the frame and whose weapon is READY_TO_FIRE, fires at the victim (Weapon::forceFireWeapon RW 0x6CF407); a OneShot record's fire frame
+	// becomes 0xFFFFFFFF. A logic without TheAI does not fire (as update, S-924)
+	void fireAtVictim(Object *victim);
+
 private:
 	struct Record
 	{
@@ -99,8 +107,6 @@ private:
 		bool oneShot = false;
 		Coord3D offset{};
 	};
-	UpdateSleepTime nextSleep() const; ///< RW 0x88F0AA
-	ObjectWeapons &weaponHost();
 	const FireWeaponUpdateModuleData *m_data;
 	std::vector<Record> m_records;
 	std::unique_ptr<ObjectWeapons> m_ownHost; ///< the host of an object without a WeaponSet (S-924)

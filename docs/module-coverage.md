@@ -277,7 +277,7 @@ The live report's `unported_modules` (objects alive at the end of the run) of ei
 | 178 | RemoveUpgradeUpgrade | Behavior | 4 | 365 | ported |
 | 179 | RousingSpeechUpdate | Behavior | 4 | 3 | ported |
 | 180 | SiegeEngineContain | Behavior | 4 | 4 | ported |
-| 181 | SpawnUnitBehavior | Behavior | 4 | 3 | missing |
+| 181 | SpawnUnitBehavior | Behavior | 4 | 3 | ported |
 | 182 | SpecialEnemySenseUpdate | Behavior | 4 | 2 | missing |
 | 183 | SupplyCenterCreate | Behavior | 4 | 1 | ported |
 | 184 | SupplyCenterDockUpdate | Behavior | 4 | 1 | ported |
@@ -322,7 +322,7 @@ The live report's `unported_modules` (objects alive at the end of the run) of ei
 | 223 | BridgeBehavior | Behavior | 1 | 1 | missing |
 | 224 | CivilianSpawnUpdate | Behavior | 1 | 1 | missing |
 | 225 | CritterEmitterUpdate | Behavior | 1 | 1 | missing |
-| 226 | DamageFieldUpdate | Behavior | 1 | 1 | missing |
+| 226 | DamageFieldUpdate | Behavior | 1 | 1 | ported |
 | 227 | DamageFilteredCreateObjectDie | Behavior | 1 | 2 | ported |
 | 228 | DelayedLuaEventUpdate | Behavior | 1 | 1 | missing |
 | 229 | DestroyEnvironmentUpdate | Behavior | 1 | 1 | missing |

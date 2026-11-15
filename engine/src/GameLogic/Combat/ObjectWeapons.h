@@ -176,6 +176,8 @@ public:
 	void fireExtraWeapon(Weapon &w, Object &victim);
 	// lane SPELL-2 / HERO-1: RW 0x6CF3D2 Weapon::forceFireWeapon(source, pos): privateFireWeapon at a position (ZH: no victim, ranges ignored), no lock, no tracker
 	void fireExtraWeaponAt(Weapon &w, const Coord3D &pos);
+	// fork lane DAMAGEFIELD-1: RW 0x6CF407 Weapon::forceFireWeapon(source, victim): privateFireWeapon at an object, ranges ignored, no lock, no tracker
+	void fireExtraWeaponForcedAt(Weapon &w, Object &victim);
 	// lane HERO-1: a weapon of its own (WeaponFireSpecialAbilityUpdate RW 0x895E1A: RW 0x68B150(template, slot 0), owner 0, RW 0x6CEE0F loadAmmoNow)
 	std::unique_ptr<Weapon> makeExtraWeapon(const WeaponTemplate *t);
 	// lane DECOMP-1: RW 0x6CF530 WeaponStore::createAndFireTempWeapon(template, source, position) (BFME2 decomp WeaponStoreCreateAndFireTempWeapon.cpp, tier A):

@@ -393,6 +393,23 @@ void ObjectWeapons::fireExtraWeaponDetonationAt(Weapon &w, Object &victim)
 	w.privateFireWeapon(host(), delivery, args);
 }
 
+// fork lane DAMAGEFIELD-1: RW 0x6CF407 Weapon::forceFireWeapon(source, victim) -> privateFireWeapon RW 0x6CEF6D (source, source position, victim, victim id, no
+// position, 1, 0, 0): at the object, the ranges ignored, not a detonation
+void ObjectWeapons::fireExtraWeaponForcedAt(Weapon &w, Object &victim)
+{
+	if (!w.getTemplate())
+	{
+		return;
+	}
+	Weapon::FireArgs args;
+	args.target.hasVictim = true;
+	args.target.victimID = victim.getID();
+	args.target.victimPosition = *victim.getPosition();
+	args.ignoreRanges = true; // argument 6
+	ObjectWeaponDelivery delivery(*m_owner, *this, *w.getTemplate(), w);
+	w.privateFireWeapon(host(), delivery, args);
+}
+
 // RW 0x6CF3D2 -> privateFireWeapon RW 0x6CEF6D with the position as the target (its sixth argument 1: ZH forceFireWeapon's ignoreRanges)
 void ObjectWeapons::fireExtraWeaponAt(Weapon &w, const Coord3D &pos)
 {
