@@ -43,6 +43,53 @@ int BeaconCommands::countBeacons(const GameLogic &logic, const Player &player, c
 	return count;
 }
 
+bool BeaconCommands::closestEdgePoint(const GameLogic &logic, const Coord3D &pos, Coord3D &out)
+{
+	const TerrainLogic *terrain = logic.terrain();
+	if (!terrain)
+	{
+		return false;
+	}
+	float hiX = 0.0f, hiY = 0.0f;
+	if (!terrain->getExtent(0, hiX, hiY))
+	{
+		hiX = hiY = 0.0f; // RW 0x462637 without boundaries: hi (0, 0)
+	}
+	const float loX = 0.0f, loY = 0.0f;
+	// RW 0x67D949: the nearest side, in the order low y, high x, high y, low x (a strictly smaller distance wins)
+	// RW 0x67D961 ..: `fld a; fsub b` (x87, PC24), `fstp qword`, MSVCR71 fabs (RW 0xA3CF8A), `fstp dword`
+	auto dist = [](float a, float b) { return SimMath::fstpDword(SimMath::absD(SimMath::pc24SubW((double)a, (double)b))); };
+	const float d[4] = { dist(pos.y, loY), dist(pos.x, hiX), dist(pos.y, hiY), dist(pos.x, loX) };
+	int best = 0;
+	float bestD = d[0];
+	for (int i = 1; i < 4; ++i)
+	{
+		if (d[i] < bestD)
+		{
+			bestD = d[i];
+			best = i;
+		}
+	}
+	float x = pos.x, y = pos.y;
+	switch (best)
+	{
+	case 0:
+		y = loY;
+		break;
+	case 1:
+		x = hiX;
+		break;
+	case 2:
+		y = hiY;
+		break;
+	default:
+		x = loX;
+		break;
+	}
+	out = Coord3D{ x, y, terrain->getGroundHeight(x, y) }; // vslot 0x18 (x, y, no normal)
+	return true;
+}
+
 bool BeaconCommands::clampBeaconLocation(const GameLogic &logic, Coord3D &pos)
 {
 	// RW 0x67DFCE (TheTerrainLogic null: false)
@@ -61,39 +108,9 @@ bool BeaconCommands::clampBeaconLocation(const GameLogic &logic, Coord3D &pos)
 	const float loX = 0.0f, loY = 0.0f;
 	if (pos.x <= loX || hiX <= pos.x || pos.y <= loY || hiY <= pos.y)
 	{
-		// RW 0x67D949: the nearest side, in the order low y, high x, high y, low x (a strictly smaller distance wins)
-		// RW 0x67D961 ..: `fld a; fsub b` (x87, PC24), `fstp qword`, MSVCR71 fabs (RW 0xA3CF8A), `fstp dword`
-		auto dist = [](float a, float b) { return SimMath::fstpDword(SimMath::absD(SimMath::pc24SubW((double)a, (double)b))); };
-		const float d[4] = { dist(pos.y, loY), dist(pos.x, hiX), dist(pos.y, hiY), dist(pos.x, loX) };
-		int best = 0;
-		float bestD = d[0];
-		for (int i = 1; i < 4; ++i)
-		{
-			if (d[i] < bestD)
-			{
-				bestD = d[i];
-				best = i;
-			}
-		}
-		float x = pos.x, y = pos.y;
-		switch (best)
-		{
-		case 0:
-			y = loY;
-			break;
-		case 1:
-			x = hiX;
-			break;
-		case 2:
-			y = hiY;
-			break;
-		default:
-			x = loX;
-			break;
-		}
-		pos.x = x;
-		pos.y = y;
-		pos.z = terrain->getGroundHeight(x, y); // vslot 0x18 (x, y, no normal)
+		Coord3D edge;
+		closestEdgePoint(logic, pos, edge);
+		pos = edge;
 	}
 	return !view->isUnderwater(pos.x, pos.y, nullptr, nullptr); // vslot 0x4C (RW 0x67DAE6)
 }

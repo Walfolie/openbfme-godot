@@ -54,3 +54,5 @@ Packages (in this order; each package is ported, tested and committed together):
   modules, DelayedLuaEventUpdate, ToppleUpdate, FadeAndDieOrnamentUpdate.
 
 Done before this census: fork lane AOD-1 (AODCrushCollide, OathbreakersFadeAwayBehavior, AODHordeContain).
+
+Done since: package A, fork lane CASTLEMOD-1: GateProxyBehavior, OCLUpdate, RubbleRiseUpdate (WallUpgradeUpdate and ManTheWallsSpecialPower follow).

@@ -26,6 +26,7 @@ list(APPEND OPENBFME_SIM_SOURCES
     src/GameLogic/Module/DamageFieldUpdate.cpp # fork DAMAGEFIELD-1
     src/GameLogic/Module/OathbreakerModules.cpp # fork AOD-1
     src/GameLogic/Object/Contain/AODHordeContain.cpp # fork AOD-1
+    src/GameLogic/Module/CastleModules2.cpp # fork CASTLEMOD-1
     src/GameLogic/FireLogicSystem.cpp # fork FIRELOGIC-1: TheFireLogicSystem (the terrain fire grid)
     src/GameLogic/Object/CollisionManager.cpp # fork COLLIDE-1: TheCollisionManager's library
     src/GameLogic/Object/ObjectCollision.cpp # fork COLLIDE-1: an Object's collidable
@@ -53,6 +54,7 @@ set(OPENBFME_MOD1_TESTS
     tests/test_damage_field.cpp # fork DAMAGEFIELD-1: DamageFieldUpdate (synthetic data)
     tests/test_aod_modules.cpp # fork AOD-1: AODCrushCollide, OathbreakersFadeAwayBehavior (synthetic data)
     tests/test_aod_horde_retail.cpp # fork AOD-1: AODHordeContain (retail data)
+    tests/test_castle_modules2.cpp # fork CASTLEMOD-1: GateProxyBehavior, OCLUpdate (synthetic data)
     tests/test_firelogic.cpp # fork FIRELOGIC-1: TheFireLogicSystem (synthetic data)
     tests/test_collision_manager.cpp # fork COLLIDE-1: the collision manager library (synthetic boxes)
 )

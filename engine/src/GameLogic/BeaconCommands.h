@@ -46,6 +46,9 @@ const ThingTemplate *beaconTemplate(const GameLogic &logic, const Player &player
 int countBeacons(const GameLogic &logic, const Player &player, const ThingTemplate &beacon);
 // RW 0x67DFCE: the location clamped into the map; false when it is under water (or there is no terrain)
 bool clampBeaconLocation(const GameLogic &logic, Coord3D &pos);
+// TheTerrainLogic::findClosestEdgePoint (vslot 0x34, RW 0x67D949): the point on the nearest side of the terrain's extent (the order low y, high x,
+// high y, low x; a strictly smaller distance wins), z the ground height there; false without a map terrain (fork lane CASTLEMOD-1 shares it)
+bool closestEdgePoint(const GameLogic &logic, const Coord3D &pos, Coord3D &out);
 // the acceptance stop of the beacons (docs/STOPS.md S-5151), one line
 std::vector<std::string> stopLines();
 }

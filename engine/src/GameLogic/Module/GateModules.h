@@ -120,11 +120,17 @@ public:
 	UpdateSleepTime update() override;
 	void crc(StateHasher &hasher) const override;
 
-	bool isOpen() const { return m_state == OPEN; } // slot 6
-	bool isSettled() const { return m_settled; }    // slot 10
-	void open();                                     // slot 7
-	void close();                                    // slot 8
-	void toggle();                                   // slot 9
+	// the gate interface's slots (virtual: fork lane GATEPROXY-1's GateProxyBehavior forwards them to its gate)
+	virtual bool isOpen() const { return m_state == OPEN; } // slot 6
+	virtual bool isSettled() const { return m_settled; }    // slot 10
+	virtual void open();                                     // slot 7
+	virtual void close();                                    // slot 8
+	virtual void toggle();                                   // slot 9
+	// RW 0x89CB19 (slot 1 of the module table RW 0xC668AC): an object created dead opens (RW 0x89CA84(1, 1)) and leaves the AI's gate list; with a
+	// Proxy the first object of that template with a GateProxyBehavior is linked both ways (+ 0x24 of each module: the other's id; fork lane GATEPROXY-1)
+	void onObjectCreated() override;
+	ObjectID link() const { return m_link; }
+	void friend_setLink(ObjectID id) { m_link = id; }
 	void changeWantOpenCount(int delta);             // RW 0x89BFE0
 	// RW 0x89C12F: true while the gate's OPEN (passable) geometry is the one in the pathfinder's map (the AI gate list's test)
 	bool openGeometryInPathfindMap() const;
@@ -149,7 +155,7 @@ public:
 	// the sounds the gate would have started (stop S-1942: not played), in order: "opening", "closing", "opened", "closed"
 	const std::vector<std::string> &soundRequests() const { return m_sounds; }
 
-	// the gate interface of an object (its GateOpenAndCloseBehavior; GateProxyBehavior is not ported), null without one
+	// the gate interface of an object: its GateOpenAndCloseBehavior, else its GateProxyBehavior (the messages RW 0x77BF7B / 0x77C037), null without one
 	static GateOpenAndCloseBehavior *findGate(const Object &obj);
 
 private:
@@ -159,6 +165,7 @@ private:
 	bool moveAway(Object &unit);       // RW 0x89C5A2: true when the unit was asked
 
 	const GateOpenAndCloseBehaviorModuleData *m_data;
+	ObjectID m_link = INVALID_ID;    ///< +0x24 (fork lane GATEPROXY-1: a gate's proxy, a proxy's gate)
 	int m_state = CLOSED;            ///< +0x28
 	int m_geometryState = GEOMETRY_NONE; ///< +0x2C
 	bool m_settled = true;           ///< +0x30
@@ -168,6 +175,28 @@ private:
 	bool m_soundPlayed = false;      ///< +0x48
 	std::vector<std::string> m_sounds;
 	unsigned m_pushOutRequests = 0; ///< diagnostics (not retail state, not hashed or saved)
+};
+
+// GateProxyBehavior (fork lane GATEPROXY-1; registration RW 0x659500, create RW 0x653D2C, 0x50 bytes, constructor RW 0x64DFA5 over the gate's RW 0x89C04B;
+// the gate's data, RW 0x653D6D): an invisible, selectable stand-in for a gate (Gondor's and Arnor's castle gate, Orthanc's door: gateProxy, ArnorgateProxy,
+// IsengardOrthancDoorProxy). A GateOpenAndCloseBehavior whose update sleeps forever (RW 0x88B211), whose collide interface does nothing (RW 0x918BA0 /
+// 0x7FEAC1) and whose gate slots 6 .. 10 (RW 0x656747 / 0x65667C / 0x656719 / 0x656730 / 0x656760) go to its gate: + 0x24 the gate's id, found (RW 0x449681)
+// with its GateOpenAndCloseBehavior (RW 0x656693; + 0x4C, re-read at each call), else false / nothing. The gate sets the link (RW 0x89CB19)
+class GateProxyBehavior : public GateOpenAndCloseBehavior
+{
+public:
+	OBFME_MODULE_XFER(GateProxyBehavior)
+	GateProxyBehavior(Thing *thing, const GateOpenAndCloseBehaviorModuleData *data);
+	UpdateSleepTime update() override { return UPDATE_SLEEP_FOREVER; }
+	void onCollide(Object *, const Coord3D *, const Coord3D *) override {}
+	bool wouldLikeToCollideWith(const Object &) const override { return false; }
+	bool isOpen() const override;
+	bool isSettled() const override;
+	void open() override;
+	void close() override;
+	void toggle() override;
+	// RW 0x656693: the linked gate's GateOpenAndCloseBehavior, null when it is gone
+	GateOpenAndCloseBehavior *gate() const;
 };
 
 class AIGateUpdateModuleData : public ModuleData
