@@ -351,6 +351,7 @@ std::shared_ptr<const LogicSnapshot> LogicSnapshot::build(GameLogic &logic, cons
 		}
 		s.drawableHidden = o->isDrawableHidden(); // lane GARRISON-1
 		s.phantomStructure = kPhantom >= 0 && o->testStatus((unsigned)kPhantom); // lane FBSIM-1
+		s.logicOpacity = o->logicDrawableOpacity();                                // fork lane AOD-1
 		if (s.phantomStructure && o->getControllingPlayer() != logic.players().getLocalPlayer())
 		{
 			s.drawableHidden = true; // RW 0x88D3B2 .. 0x88D3DB: not the local player's phantom (RW 0x6AA7B2; the owner's + 0x35A byte, RW 0x6AAC44, is not ported)

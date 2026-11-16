@@ -302,6 +302,10 @@ public:
 	// lane SCRIPT-2: RW Object + 0x454 (set by RW 0x68BE3C, the script's "Selectable" panel flag); the client's isSelectable also needs it
 	void setScriptSelectable(bool on) { m_scriptSelectable = on; }
 	bool isScriptSelectable() const { return m_scriptSelectable; }
+	// fork lane AOD-1: the drawable's opacity a module sets (Drawable + 0xB0, OathbreakersFadeAwayBehavior RW 0x8BCD3B); below 0: none set. The client
+	// takes it through the snapshot (ObjectSnapshot::logicOpacity)
+	void setLogicDrawableOpacity(float opacity) { m_logicDrawableOpacity = opacity; }
+	float logicDrawableOpacity() const { return m_logicDrawableOpacity; }
 	// lane MODCOMPAT-MOD1: RW Object::maskObject (RW 0x68BEB1): Object + 0x459 bit 1 (masking also deselects the object for every player but its own,
 	// RW 0x625759: the selection is the client's). Writers: RebuildHoleBehavior (RW 0x886630 / 0x886B51), SpawnBehavior's AggregateHealth (RW 0x86321B, not
 	// ported: S-1425) and RW 0x8A7754. Its readers (RW 0x6C91EB, 0x81E691, 0x83BDAF) are not ported: the masked hole is also UNSELECTABLE and UNATTACKABLE
@@ -632,6 +636,7 @@ private:
 	int m_creationSeed = 0;
 	std::string m_name;
 	std::uint8_t m_scriptStatus = 0; ///< lane SCRIPT-2: RW + 0x457 (hashed when not zero)
+	float m_logicDrawableOpacity = -1.0f; ///< fork lane AOD-1 (client state: not hashed, not saved; the module that sets it saves its own value)
 	bool m_scriptSelectable = false; ///< RW +0x454: ctor initializes from SELECTABLE; hash only deviations from the template-derived default
 	bool m_masked = false;           ///< RW + 0x459 bit 1 (maskObject; hashed when set)
 	TriggerEntry m_triggers[MAX_TRIGGERS_IN];  ///< lane SCRIPT-2: RW + 0x3DC

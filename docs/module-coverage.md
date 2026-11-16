@@ -249,7 +249,7 @@ The live report's `unported_modules` (objects alive at the end of the run) of ei
 | 150 | FellBeastSwoopPower | Behavior | 6 | 2 | ported |
 | 151 | FloodUpdate | Behavior | 6 | 6 | ported |
 | 152 | HeroDie | Behavior | 6 | 3 | ported |
-| 153 | OathbreakersFadeAwayBehavior | Behavior | 6 | 4 | missing |
+| 153 | OathbreakersFadeAwayBehavior | Behavior | 6 | 4 | ported |
 | 154 | RepairSpecialPower | Behavior | 6 | 3 | ported |
 | 155 | TunnelContain | Behavior | 6 | 4 | ported |
 | 156 | W3DTornadoDraw | Draw | 6 | 6 | missing |
@@ -269,7 +269,7 @@ The live report's `unported_modules` (objects alive at the end of the run) of ei
 | 170 | StructureToppleUpdate | Behavior | 5 | 5 | ported |
 | 171 | TaintSpecialPower | Behavior | 5 | 2 | ported |
 | 172 | UpgradeDie | Behavior | 5 | 5 | ported |
-| 173 | AODCrushCollide | Behavior | 4 | 2 | missing |
+| 173 | AODCrushCollide | Behavior | 4 | 2 | ported |
 | 174 | AnnounceBirthAndDeathBehavior | Behavior | 4 | 2 | missing |
 | 175 | ClearanceTestingSlowDeathBehavior | Behavior | 4 | 12 | ported |
 | 176 | LockWeaponCreate | Behavior | 4 | 2 | ported |

@@ -298,6 +298,8 @@ public:
 	void setDrawableOpacity(float opacity) { m_fade.opacity = opacity; }
 	// lane FBSIM-1: the phantom structure's opacity (ObjectSnapshot::phantomStructure)
 	void updatePhantomLook(const ObjectSnapshot &rec);
+	// fork lane AOD-1: the opacity the simulation set (ObjectSnapshot::logicOpacity)
+	void updateLogicOpacity(const ObjectSnapshot &rec);
 
 	// ---- lane STEALTHLOOK-1: the drawable's stealth look (GameClient/StealthLook.h; RW 0x6760F9 setter and the per-client-frame step RW 0x673114) ----
 	// the snapshot's look drives the setter (retail's callers hand it (look, min, max, cycle) unconditionally); the object's HORDE parent
@@ -333,6 +335,7 @@ private:
 	std::vector<std::unique_ptr<DrawableModule>> m_clientModules;
 	bool m_clientHidden = false; ///< lane CHAT-1
 	bool m_shadowsEnabled = true; ///< RW Drawable +0x114 bit 2 (TOP20 #24)
+	float m_logicOpacity = -1.0f; ///< fork lane AOD-1: the last ObjectSnapshot::logicOpacity taken
 	bool m_phantomLook = false;  ///< lane FBSIM-1: drawn as a dozer's phantom structure (0.4 opacity)
 	Fade m_fade; ///< lane PROJ-2
 	StealthLook::State m_stealth;            ///< lane STEALTHLOOK-1: RW Drawable +0xB4 .. +0xD4, +0x164, +0x358, +0x43E

@@ -24,6 +24,7 @@ list(APPEND OPENBFME_SIM_SOURCES
     src/GameLogic/Module/AimWeaponBehavior.cpp # fork AIM-1
     src/GameLogic/Module/SpellRechargeModifierUpgrade.cpp # fork SPELLRECHARGE-1
     src/GameLogic/Module/DamageFieldUpdate.cpp # fork DAMAGEFIELD-1
+    src/GameLogic/Module/OathbreakerModules.cpp # fork AOD-1
     src/GameLogic/FireLogicSystem.cpp # fork FIRELOGIC-1: TheFireLogicSystem (the terrain fire grid)
     src/GameLogic/Object/CollisionManager.cpp # fork COLLIDE-1: TheCollisionManager's library
     src/GameLogic/Object/ObjectCollision.cpp # fork COLLIDE-1: an Object's collidable
@@ -49,6 +50,7 @@ set(OPENBFME_MOD1_TESTS
     tests/test_spell_recharge_modifier.cpp # fork SPELLRECHARGE-1: SpellRechargeModifierUpgrade (synthetic data)
     tests/test_spawnunit_retail.cpp # fork SPAWNUNIT-1: SpawnUnitBehavior's update (retail data)
     tests/test_damage_field.cpp # fork DAMAGEFIELD-1: DamageFieldUpdate (synthetic data)
+    tests/test_aod_modules.cpp # fork AOD-1: AODCrushCollide, OathbreakersFadeAwayBehavior (synthetic data)
     tests/test_firelogic.cpp # fork FIRELOGIC-1: TheFireLogicSystem (synthetic data)
     tests/test_collision_manager.cpp # fork COLLIDE-1: the collision manager library (synthetic boxes)
 )

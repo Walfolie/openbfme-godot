@@ -514,6 +514,7 @@ void Drawable::syncFromSnapshot(const ObjectSnapshot &rec, UnsignedInt snapshotF
 	m_zBasisCached = false; // the next prepareSync recomputes its trigonometry
 	updateConstruction(rec, snapshotFrame, alpha); // RENDER-2 (DrawableConstruction.cpp)
 	updatePhantomLook(rec);                        // lane FBSIM-1
+	updateLogicOpacity(rec);                       // fork lane AOD-1
 	m_moveSpeed = rec.moveSpeed;                   // lane SMOOTH-3: the walk / run cycle's speed source (RW 0x4B67D4)
 	m_scriptTarget = rec.scriptTarget;             // lane FX-3
 }
@@ -552,8 +553,19 @@ void Drawable::prepareSync(const ObjectSnapshot &rec, UnsignedInt snapshotFrame,
 	// the transform does not enter these (the construction look reads the record and the flags): done here, before commitSync sets it
 	updateConstruction(rec, snapshotFrame, alpha); // RENDER-2 (DrawableConstruction.cpp)
 	updatePhantomLook(rec);                        // lane FBSIM-1
+	updateLogicOpacity(rec);                       // fork lane AOD-1
 	m_moveSpeed = rec.moveSpeed;                   // lane SMOOTH-3: the walk / run cycle's speed source (RW 0x4B67D4)
 	m_scriptTarget = rec.scriptTarget;             // lane FX-3
+}
+
+void Drawable::updateLogicOpacity(const ObjectSnapshot &rec)
+{
+	// fork lane AOD-1: the simulation wrote Drawable + 0xB0 (OathbreakersFadeAwayBehavior RW 0x8BCD3B); the drawable takes each new value
+	if (rec.logicOpacity >= 0.0f && rec.logicOpacity != m_logicOpacity)
+	{
+		m_logicOpacity = rec.logicOpacity;
+		setDrawableOpacity(m_logicOpacity);
+	}
 }
 
 void Drawable::updatePhantomLook(const ObjectSnapshot &rec)

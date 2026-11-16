@@ -166,6 +166,13 @@ public:
 	// VisionSide with them when they are above 0. Declared LAST so no earlier slot of the interface moves.
 	virtual float getVisionRearOverride() const = 0;
 	virtual float getVisionSideOverride() const = 0;
+	// fork lane AOD-1: slot 0x130, a member's AODCrushCollide met `other` (RW 0x8C028F): AODHordeContain RW 0x87E894 follows a LARGE object; HordeContain
+	// and every other horde: nothing (RW 0x8851E4). Declared after the slots above so none of them moves
+	virtual void noteMemberContact(Object *member, Object *other)
+	{
+		(void)member;
+		(void)other;
+	}
 };
 
 class HordeContain : public UpdateModule, public ContainModuleInterface, public CreateModuleInterface, public HordeContainInterface
