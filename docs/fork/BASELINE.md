@@ -57,7 +57,7 @@ runs in the same state as upstream's hosts.
 
 Since fork lane SPELLRECHARGE-1 (2026-11-15) the fork's four vectors (perf1's three, `engine/tests/data/uber1/battle3000_40.hashes`) are its own:
 the maps' signal fires now count for their owner from frame 0. Fork lane SPAWNUNIT-1 moved the skirmish vector again (the Elven citadel's SpawnUnitBehavior now wakes every 5 frames). With that module's handlers switched off the old (upstream) vectors still held in every
-frame. Fork lane FIRELOGIC-1 moved the skirmish and the Uber vector (the terrain fire grid lights from FireLogicNugget, and the nugget is no longer counted as unported); with the grid off and the count restored the previous vectors held. An upstream merge that moves the vectors must be re-measured on the merged tree (`OPENBFME_PERF1_REGEN=1`, `OPENBFME_UBER1_REGEN=1`).
+frame. Fork lane FIRELOGIC-1 moved the skirmish and the Uber vector (the terrain fire grid lights from FireLogicNugget, and the nugget is no longer counted as unported); with the grid off and the count restored the previous vectors held. Fork lane COLLIDE-1 moved all three perf1 vectors (TheCollisionManager replaces the partition collision pass in the Faithful profile, and its contacts are hashed); with the manager switched off the previous vectors held, and the Uber vector is unchanged (the Uber profile keeps the old passes). Its cost (Windows MSVC, mean per frame): the big battle 8.66 ms -> 14.8 ms, the skirmish 4.7 ms -> 6.0 ms, the allied blob 4.65 ms with 4825 contacts per frame (phase 5 item). An upstream merge that moves the vectors must be re-measured on the merged tree (`OPENBFME_PERF1_REGEN=1`, `OPENBFME_UBER1_REGEN=1`).
 
 ## The CRC frame (phase 1, lane CRCFREQ-1)
 

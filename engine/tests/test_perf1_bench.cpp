@@ -35,6 +35,7 @@
 #include "GameLogic/Module/PhysicsBehavior.h"
 #include "GameLogic/Module/SlavedUpdate.h"
 #include "GameLogic/NewGame/NewGame.h"
+#include "GameLogic/Object/CollisionManager.h"
 #include "GameLogic/Object/Contain/HordeContainRuntime.h"
 #include "GameLogic/Object/Object.h"
 #include "GameLogic/SkirmishAI/SkirmishAIData.h"
@@ -224,7 +225,8 @@ void runAlliedBlob(SharedWorld &sh, int frames, Run &out, std::vector<unsigned l
 		out.hashes.push_back(logic.computeStateHash());
 		if (pairs)
 		{
-			pairs->push_back(rig.game->ai().collisionPairsLastFrame());
+			// fork lane COLLIDE-1: the Faithful profile's contacts are TheCollisionManager's (the AI pass counts the Uber profile's)
+			pairs->push_back(rig.game->logic().collisionManagerActive() ? (unsigned long long)rig.game->logic().collision().contactCount() : rig.game->ai().collisionPairsLastFrame());
 		}
 	}
 	out.instructions = counter.fd >= 0 ? instructions : -1;
@@ -593,6 +595,9 @@ TEST_CASE("perf1 bench: 4-player skirmish (medium computer players, 20 game minu
 // pin: fork lane FIRELOGIC-1 ports TheFireLogicSystem: a FireLogicNugget shot at a position lights the terrain fire grid (which burns and spreads) and is no
 // longer counted in the hashed unportedNuggets counter. Checked: with the grid switched off and the nugget counted again the previous vector held in every
 // frame. Re-measured once (OPENBFME_PERF1_REGEN=1, Windows MSVC).
+// pin: fork lane COLLIDE-1 replaces the Faithful profile's partition collision pass with TheCollisionManager (the sweep-and-prune broad phase, its
+// contact walk in bucket order and the responses of every collide module), and hashes its contacts. Checked: with the manager switched off all three
+// previous vectors held in every frame. Re-measured once (OPENBFME_PERF1_REGEN=1, Windows MSVC).
 TEST_CASE("perf1: the big battle (400 frames) and a 4-player AI skirmish after another AI game (6000 frames) hash as the build before PERF-1 did in every frame")
 {
 	// Ambient movement: target idle wandering adds RNG draws and origin state,

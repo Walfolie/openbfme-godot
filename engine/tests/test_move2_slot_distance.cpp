@@ -441,7 +441,8 @@ TEST_CASE("move2 retail: horde members stay near their slots on the march, settl
 				// on fall back 4p the Dwarven phalanx, which stopped about 450 short before (the corridor's partial path), now marches to its goal. Measured
 				// merge queue q34 (measured once on the merged tree and at each merge point): on the archive's tree with #161 the uruks on fall back 4p straggle 4 frames (#161's 22 was measured on its own base); the orcs keep 46.
 				// Lane PATH-REBUILD (the found path rebuilt from its optimised nodes with its corners rounded, RW 0x767B0E): the uruks 13, the orcs 21 (measured twice)
-				CHECK(r.straggleFrames == (run.tracks[i].name == std::string("IsengardFighterHorde") ? 13 : 21));
+				// pin: fork lane COLLIDE-1 (TheCollisionManager replaces the partition collision pass; measured once on the lane's tree, Windows MSVC; with the manager switched off the previous value held): the uruks 13 -> 2, the orcs keep 21
+				CHECK(r.straggleFrames == (run.tracks[i].name == std::string("IsengardFighterHorde") ? 2 : 21));
 			}
 			else
 			{

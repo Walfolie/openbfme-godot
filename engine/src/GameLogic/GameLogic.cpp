@@ -39,6 +39,8 @@
 #include "GameLogic/ExperienceWorld.h"
 #include "GameLogic/CreateAHeroSystem.h"
 #include "GameLogic/FireLogicSystem.h"
+#include "GameLogic/Object/CollisionManager.h"
+#include "GameLogic/Object/ObjectCollision.h"
 #include "GameLogic/GlobalWeatherSystem.h"
 #include "GameLogic/Object/AttributeModifierPool.h"
 #include "GameLogic/Object/Object.h"
@@ -72,6 +74,7 @@ GameLogic::GameLogic(ThingFactory &things, ModuleFactory &modules, PlayerList &p
 	, m_invisibility(std::make_unique<InvisibilityManager>(*this))
 	, m_dot(std::make_unique<DOTManager>(*this)) // lane DECOMP-1
 	, m_fire(std::make_unique<FireLogicSystem>(*this)) // fork lane FIRELOGIC-1
+	, m_collision(std::make_unique<CollisionManager>()) // fork lane COLLIDE-1
 	, m_trees(std::make_unique<TerrainTrees>(*this)) // lane SPELL-3
 	, m_scriptEngine(std::make_unique<ScriptEngine>(*this)) // lane SCRIPT-1
 {
@@ -103,11 +106,44 @@ void GameLogic::partitionLeave(Object &obj)
 	m_partition->unRegisterObject(obj);
 }
 
+// fork lane COLLIDE-1: the Faithful profile's contacts come from TheCollisionManager (the Uber profile keeps its parallel passes); the geometry is the
+// pathfinder's (an AIWorld)
+bool GameLogic::collisionManagerActive() const
+{
+	return !uber() && m_aiWorld != nullptr;
+}
+
+void GameLogic::collisionEnter(Object &obj)
+{
+	if (!collisionManagerActive() || obj.isOutOfCollisionManager() || !ObjectCollision::eligible(*this, obj))
+	{
+		return;
+	}
+	m_collision->registerObject(obj.friend_collidable());
+}
+
+void GameLogic::collisionLeave(Object &obj)
+{
+	if (ObjectCollidable *c = obj.collidable())
+	{
+		m_collision->unregisterObject(*c);
+	}
+}
+
+void GameLogic::collisionDirty(Object &obj)
+{
+	if (ObjectCollidable *c = obj.collidable())
+	{
+		m_collision->markDirty(*c);
+	}
+}
+
 void GameLogic::friend_objectEnteredWorld(Object &obj)
 {
 	invisibilityNoteCreated(obj); // lane STEALTH-2: RW 0x69A6BF, just before the world entry RW 0x69A6C6
 	partitionEnter(obj); // lane MODULES-2: RW 0x68E3B6, before the script world (RW 0x68E3E2)
 	m_fire->registerObject(obj); // fork lane FIRELOGIC-1: RW 0x68E3C2 (RW 0x688354)
+	collisionEnter(obj); // fork lane COLLIDE-1: RW 0x68E411
 	if (m_enteredWorld)
 	{
 		m_enteredWorld(obj);
@@ -125,6 +161,7 @@ void GameLogic::friend_objectEnteredWorld(Object &obj)
 void GameLogic::friend_objectLeftWorld(Object &obj)
 {
 	const bool inWorld = obj.isInWorld();
+	collisionLeave(obj); // fork lane COLLIDE-1: RW 0x68C1CC (also for an object a load deletes out of the world: no record may outlive its object)
 	if (inWorld)
 	{
 		partitionLeave(obj); // lane MODULES-2: RW 0x68C1B4
@@ -161,6 +198,7 @@ void GameLogic::friend_containEnterWorld(Object &obj)
 	}
 	partitionEnter(obj);
 	m_fire->registerObject(obj); // fork lane FIRELOGIC-1: RW 0x68E3C2
+	collisionEnter(obj); // fork lane COLLIDE-1: RW 0x68E411
 	if (m_enteredWorld)
 	{
 		m_enteredWorld(obj);
@@ -193,6 +231,7 @@ void GameLogic::friend_containLeaveWorld(Object &obj)
 		}
 	}
 	partitionLeave(obj);
+	collisionLeave(obj); // fork lane COLLIDE-1: RW 0x68C1CC
 	m_fire->unregisterObject(obj); // fork lane FIRELOGIC-1: RW 0x68C1E5
 	if (m_leftWorld)
 	{
@@ -649,8 +688,25 @@ void GameLogic::update(int phase)
 	if (phase == 2)
 	{
 		m_partition->update(); // RW 0x62E93B: ThePartitionManager vslot 0x28 (RW 0xA39020 -> 0xA3B4E0), then the row's collision manager (lane MODULES-2)
-		runRow(ROW_PARTITION_COLLISION);
-		combat().processProjectileContacts(); // lane FLANK-1: the flying projectiles' contacts, the same collision manager row (S-780 inference: after the AI units' pass)
+		if (collisionManagerActive())
+		{
+			m_collision->update(); // fork lane COLLIDE-1: RW 0x62E94E, TheCollisionManager vslot 0x28 (RW 0xB6C420 -> 0xB6E6B0)
+			if (m_collision->contactCount() > 0)
+			{
+				noteStop("[S-780] collision (fork lane COLLIDE-1): TheCollisionManager runs as RotWK's (RW 0xB6E6B0: the axis lists, the pair tables and their order, the cached test, "
+					"the responses through every module's collide interface in module order); not retail: the contact's location and normal (null), the save layout (the port's "
+					"whole state, obfme:Collision), and the collide interfaces of modules the port does not have (FireWeaponCollide, AODCrushCollide, CivilianSpawnCollide, "
+					"MissileUpdate, ToppleUpdate, DeflectSpecialPower, the other crate collides) and of SpecialAbilityUpdate's ignore id (+ 0x4A4, RW 0x853A71: never set)");
+				noteStop("[S-781] collision: allied ground units overlap: AIUpdate::onCollide (RW 0x66E233) reacts to enemies only and PhysicsBehavior has no collide interface; "
+					"RotWK's allied path clearing and crowd avoidance (RW 0x6F503B / 0x6F53AF -> 0x66C66E -> 0x66DA5F, move-away search RW 0x6FB231, AI state 26) is a separate "
+					"mechanism; the cause of the measured member overlap is unverified");
+			}
+		}
+		else
+		{
+			runRow(ROW_PARTITION_COLLISION);
+			combat().processProjectileContacts(); // lane FLANK-1: the flying projectiles' contacts, the same collision manager row (S-780 inference: after the AI units' pass)
+		}
 		// RW 0x62E951 .. 0x62E97E
 		for (Object *o = m_objectHead; o; o = o->getNextObject())
 		{
@@ -1051,6 +1107,7 @@ void GameLogic::reset()
 {
 	m_missionObjectives.reset(); // lane CAMPUI-1: TheMissionObjectiveTracker's reset (RW 0x835E03): a new game has no list until its map.ini's
 	m_radarEventNotices.clear(); // lane BACKLOG3: a new game's radar starts empty (the sequence goes on: a client's cursor stays behind it)
+	m_collision->reset(); // fork lane COLLIDE-1: no record outlives the objects
 	// fork lane FIRELOGIC-1: TheFireLogicSystem's grid goes first (RW 0x6873F7): the objects below leave no cell to restore, and the terrain it reads may
 	// already be gone
 	m_fire->clear();
@@ -1413,6 +1470,10 @@ std::uint32_t GameLogic::hashState(std::vector<StateHashSection> *sections, std:
 		section("create-a-hero", [&](StateHasher &x) { x.addU32(m_createAHeroes->crc()); });
 	}
 	section("weather", [&](StateHasher &x) { m_weather->crc(x); }); // lane SPELL-2
+	if (m_collision->recordCount() > 0) // fork lane COLLIDE-1: only a game with TheCollisionManager's records (the Faithful profile) has the section
+	{
+		section("collision", [&](StateHasher &x) { m_collision->crc(x); });
+	}
 	if (m_fire->touched()) // fork lane FIRELOGIC-1: only a game whose fire grid changed has the section
 	{
 		section("fire logic", [&](StateHasher &x) { m_fire->crc(x); });

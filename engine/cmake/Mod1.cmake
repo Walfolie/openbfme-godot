@@ -26,6 +26,7 @@ list(APPEND OPENBFME_SIM_SOURCES
     src/GameLogic/Module/DamageFieldUpdate.cpp # fork DAMAGEFIELD-1
     src/GameLogic/FireLogicSystem.cpp # fork FIRELOGIC-1: TheFireLogicSystem (the terrain fire grid)
     src/GameLogic/Object/CollisionManager.cpp # fork COLLIDE-1: TheCollisionManager's library
+    src/GameLogic/Object/ObjectCollision.cpp # fork COLLIDE-1: an Object's collidable
 )
 set(OPENBFME_MOD1_TESTS
     tests/test_module_coverage.cpp

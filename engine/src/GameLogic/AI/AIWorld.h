@@ -246,6 +246,7 @@ public:
 	// the objects after a load or a new map
 	void processCrateContacts();
 	unsigned long long crateContacts() const { return m_crateContacts; } ///< the overlapping crate pairs met so far (statistics)
+	void friend_noteCrateContact() { ++m_crateContacts; } ///< fork lane COLLIDE-1: a crate's response through TheCollisionManager
 	size_t crateCount() const { return m_crates.size(); }
 	// lane GATECOLLIDE-1 (S-1940 / S-581): RotWK's collision manager also holds the gates (STRUCTURE IMMOBILE, no NO_COLLIDE: RW 0x68E31F), and a gate's
 	// collide interface (RW 0x89C6F5) repels the units that touch its CLOSED geometry. The overlap pass above skips the immobile AIs, so the gates of the
@@ -256,6 +257,7 @@ public:
 	// 0x68DCC4 / 0xB59490 / 0xABEB80 / 0xB58DE0, the gate's collide interface 0x898F46
 	void processGateContacts();
 	unsigned long long gateContacts() const { return m_gateContacts; } ///< the overlapping gate pairs met so far (statistics)
+	void friend_noteGateContact() { ++m_gateContacts; } ///< fork lane COLLIDE-1: a gate's response through TheCollisionManager
 	// lane PHYS-1: RW moveAllies 0x6F503B (AIUpdateAllies.cpp): every stationary ally on the cells along `path` is asked to step away; false when not done
 	bool moveAllies(AIUpdateInterface &mover, Path &path, bool force);
 	// lane MOVE-3 r2: RW 0x6F85A6 moveAlliesAwayFromDestination (RW 0x6F7F3E -> the Bresenham line RW 0x6F57C3 -> each cell RW 0x6F53AF): every cell of the line

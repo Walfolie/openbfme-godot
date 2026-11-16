@@ -2369,7 +2369,7 @@ TEST_CASE("save4e retail review r1: a refusal inside each block of a real snapsh
 	CHECK(tokens == std::vector<std::string>{ "obfme:TeamFactory", "obfme:Players", "obfme:GameLogic", "obfme:Random", "obfme:Objects",
 						"obfme:UpdateScheduler", "obfme:TunnelTracker", "obfme:Combat", "obfme:SellList", "obfme:Experience", "obfme:Invisibility",
 						"obfme:DamageOverTime", "obfme:Partition", "obfme:Emotions", "obfme:AIWorld", "obfme:Shroud", "obfme:SkirmishAI",
-						"obfme:ScriptEngine", "obfme:Victory", "obfme:Weather", "obfme:FireLogic", "obfme:Economy", "obfme:CreateAHero", "obfme:TerrainTrees",
+						"obfme:ScriptEngine", "obfme:Victory", "obfme:Weather", "obfme:Collision", "obfme:FireLogic", "obfme:Economy", "obfme:CreateAHero", "obfme:TerrainTrees",
 						"obfme:LargeGroupAudio", "CHUNK_ObjectivesMenu", "CHUNK_MissionObjectives" });
 	Loaded g;
 	load(*s, message, g);

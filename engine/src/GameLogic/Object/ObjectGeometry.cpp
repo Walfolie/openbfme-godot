@@ -227,6 +227,24 @@ float ObjectGeometry::maxHeightAbovePosition(const std::vector<Shape> &shapes)
 	return best;
 }
 
+float ObjectGeometry::maxHeightBelowPosition(const std::vector<Shape> &shapes)
+{
+	float best = 0.0f; // RW 0xC1B594
+	for (const Shape &s : shapes)
+	{
+		if (!s.active)
+		{
+			continue;
+		}
+		const float v = s.type == SHAPE_SPHERE ? s.majorRadius : 0.0f;
+		if (v > best) // fcomp: the larger one stays
+		{
+			best = v;
+		}
+	}
+	return best;
+}
+
 void ObjectGeometry::localBox(const std::vector<Shape> &shapes, float lo[3], float hi[3])
 {
 	// RW 0xAD2040

@@ -134,11 +134,13 @@ TEST_CASE("siege1 attack retail: Mordor's catapult made inside its MinimumAttack
 	// 2935.85986
 	// lane PATH-REBUILD (the found paths rebuilt from their optimised nodes, RW 0x767B0E; a WHEELS_FOUR unit's first leg bent from its facing or reversed, RW 0x766F7F / 0x767800; the AI defender and the random stream move with every unit's lines; measured twice on the lane's tree): 59 -> 57, at the end 2935.87988 -> 2935.84985; with the optimiser's layer rule (RW 0x766532) 56 and 2869.33984
 	// pin: merge queue q49 (DECOMPFIX-1109's FLEECHASE-1: a horde's melee wait state and a lone unit's melee approach give up on a fleeing target, RW 0x7469FD / 0x746F51, so the chase goes on; measured once on the merged tree, the only item): 56 -> 58
-	CHECK(r.firstHit == 58); // merge queue q26: 47 -> 63; lane MODCOMPAT-MOD1 (GeometryUpgrade's own GeometryInfo per object, RW 0x68B244): 63 -> 66
+	// pin: fork lane COLLIDE-1 (TheCollisionManager replaces the partition collision pass; measured once on the lane's tree, Windows MSVC; with the manager switched off the previous value held): 58 -> 59; the stones that the previous pass let something before the gate catch now reach it: the gate falls at 501 (it stood at
+	// 2935.83984 at frame 600)
+	CHECK(r.firstHit == 59); // merge queue q26: 47 -> 63; lane MODCOMPAT-MOD1 (GeometryUpgrade's own GeometryInfo per object, RW 0x68B244): 63 -> 66
 	CHECK(r.distAtHit > 150.0f); // tolerance: it fired from outside its minimum range (the drive ends where the attack state's approach puts it: 243.2)
 	// merge queue q26 (the archive's pair rule, SIEGE-1 / test_siege1_gate.cpp): from its backed-off spot most stones are caught before the gate; at frame 600
 	// the gate still stands at 2935.86 (a follow-up: test_siege1_gate.cpp's back-off case)
-	CHECK(r.deathFrame == -1);
+	CHECK(r.deathFrame == 501);
 	// lane MODCOMPAT-MOD1 (GeometryUpgrade's own GeometryInfo per object, RW 0x68B244, measured at its commit): 2935.87988 -> 2935.84985
 	// merge queue q32 (#159's ramp cells (RW 0x93527F: Helm's Deep's ramps meet the ground and the wall tops only at their two ends) move the AI defender and the random stream; measured once on the merged tree, the change appears at #159's merge point): 2869.33984 -> 2869.34985
 	// merge queue q34 (#161's block search, block zones RW 0x9389A6 and raised branch RW 0x9389CE, gives the siege engine and the AI defender other routes at Helm's Deep;
@@ -151,7 +153,7 @@ TEST_CASE("siege1 attack retail: Mordor's catapult made inside its MinimumAttack
 	// pin: merge queue q43 (#231's DEFENSIVE tactic moves the AI defender and the random stream; measured once on the merged tree and at each merge point,
 	// the later items keep it): 2869.32983 -> 2869.33984
 	// pin: merge queue q49 (DECOMPFIX-1109's FLEECHASE-1: a horde's melee wait state and a lone unit's melee approach give up on a fleeing target, RW 0x7469FD / 0x746F51, so the chase goes on; measured once on the merged tree, the only item): 2869.33984 -> 2935.83984
-	CHECK(r.healthAfter == 2935.83984f); // with the arc's segment count at x87 precision control 24 (RW 0x765E00; measured twice on the lane's tree): 2869.33984 -> 2869.35986; lane FBSIM-1 (the AI defender's phantom sites move the random stream): 2935.85986 -> 2935.87988
+	CHECK(r.healthAfter == 0.0f); // with the arc's segment count at x87 precision control 24 (RW 0x765E00; measured twice on the lane's tree): 2869.33984 -> 2869.35986; lane FBSIM-1 (the AI defender's phantom sites move the random stream): 2935.85986 -> 2935.87988
 }
 
 TEST_CASE("siege1 attack retail: a mumak and the Dwarven demolisher break Helm's Deep's main gate; Mordor's catapult from 500 toward Player_2_Start hits the flanking tower")

@@ -20,7 +20,7 @@ The target validity checks the common crate rules, death/height, positive level
 award, trainability, accepting XP and AffectsUpToLevel. getLevelsToGain at RW
 0x8C1025 (BFME2 RVA 0x4BCEDC) returns zero for AddsOwnerVeterancy, otherwise one:
 refusing AddsOwnerVeterancy therefore implements the native zero-level gate.
-The shared native contact pass excludes the HORDE collision record (RW 0x68E31F); a battalion pickup therefore awards the touching individual member, not an unconditional level to the horde.
+Fork lane COLLIDE-1: RW 0x68E31F registers a HORDE with the collision manager when AIData HordesWaitForHordes is set (retail: Yes; RW 0x68E3E2 .. 0x68E3FD), so the horde itself meets a crate; in the measured battalion pickup the horde collects the veterancy shield (its rank + 1) and no member is promoted.
 Zero EffectRange promotes the collector; a nonzero range promotes other objects
 of its controlling player. The target's IsPilot path additionally checks owner,
 airborne locomotion and transfers the script name after promotion.

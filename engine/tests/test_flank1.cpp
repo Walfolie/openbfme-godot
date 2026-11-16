@@ -16,6 +16,7 @@
 #include "GameLogic/FXEvents.h"
 #include "GameLogic/Module/ProjectileModules.h"
 #include "GameLogic/Module/SquishCollide.h"
+#include "GameLogic/Object/ObjectCollision.h"
 #include "GameLogic/Weapon.h"
 
 #include <algorithm>
@@ -393,10 +394,13 @@ TEST_CASE("flank1 projectile: a stone meets its own side's wall in flight only w
 		ObjectWeapons::createAndFireTempWeaponAt(w.weapon(controlled ? "FlankLobControlled" : "FlankLobStructures"), shooter, *victim);
 		Object *stone = w.flyingProjectile("FlankStone");
 		REQUIRE(stone != nullptr);
-		CHECK(w.combat().flyingProjectileCount() == 1); // KindOf PROJECTILE without NO_COLLIDE: in the collision manager (RW 0x68E31F)
+		// KindOf PROJECTILE without NO_COLLIDE: in the collision manager (RW 0x68E31F; fork lane COLLIDE-1: TheCollisionManager's record)
+		REQUIRE(stone->collidable() != nullptr);
+		CHECK(stone->collidable()->collisionRecord != nullptr);
+		const size_t records = w.logic->collision().recordCount();
 		w.frames(20);
 		CHECK(w.flyingProjectile("FlankStone") == nullptr);
-		CHECK(w.combat().flyingProjectileCount() == 0);
+		CHECK(w.logic->collision().recordCount() == records - 1);
 		if (controlled)
 		{
 			CHECK(w.combat().counters().projectileContactHits == 1); // the wall; the stone is gone before it reaches the victim
@@ -472,7 +476,7 @@ TEST_CASE("flank1 projectile: a NO_COLLIDE arrow never enters the contact pass")
 	w.frames(2);
 	ObjectWeapons::createAndFireTempWeaponAt(w.weapon("FlankBow"), shooter, *victim);
 	REQUIRE(w.flyingProjectile("Arrow") != nullptr);
-	CHECK(w.combat().flyingProjectileCount() == 0);
+	CHECK((w.flyingProjectile("Arrow")->collidable() == nullptr || w.flyingProjectile("Arrow")->collidable()->collisionRecord == nullptr));
 	w.frames(20);
 	CHECK(w.combat().counters().projectileContacts == 0);
 	CHECK(w.health(victim) == 100.0f - 12.0f); // BowWarhead 15 PIERCE at 80%: through the wall

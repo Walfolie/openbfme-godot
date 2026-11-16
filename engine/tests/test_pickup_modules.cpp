@@ -436,11 +436,13 @@ TEST_CASE("pickup1 veterancy: the AI horde scans, walks to and consumes an exper
   p.g.live->stepFrame();
  const Object *remaining = logic.findObjectByID(id);
  CHECK((!remaining || remaining->isDestroyed()));
- // Native contacts promote the touching member; the invisible HORDE is not a collision record.
+ // fork lane COLLIDE-1: RW 0x68E3E2 .. 0x68E3FD registers a HORDE with TheCollisionManager when AIData HordesWaitForHordes (+ 0xB9) is set, as in
+ // retail; measured: the horde collects the shield (its rank + 1) and no member is promoted (before: the touching member, the horde left out)
  int promoted = 0;
  for (Object *member = logic.getFirstObject(); member; member = member->getNextObject())
   if (member->getContainedBy() == p.horde && member->getExperienceTracker() && member->getExperienceTracker()->getRank() == rankBefore + 1) ++promoted;
- CHECK(promoted == 1);
+ CHECK(promoted == 0);
+ CHECK(p.horde->getExperienceTracker()->getRank() == rankBefore + 1);
  CHECK(p.module->pickups() == 1);
  CHECK(p.module->blocked() == 0);
 }

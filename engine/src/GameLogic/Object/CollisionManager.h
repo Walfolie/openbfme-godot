@@ -31,8 +31,12 @@
 #include "Common/INIDataTypes.h"
 
 #include <cstdint>
+#include <functional>
 #include <unordered_map>
 #include <vector>
+
+class StateHasher;
+class Xfer;
 
 class CollisionManager
 {
@@ -109,6 +113,13 @@ public:
 	unsigned long long tests() const { return m_tests; }
 	unsigned long long responses() const { return m_responses; }
 	unsigned long long rebuilds() const { return m_rebuilds; }
+	// the state hash: the record and dirty counts, the contacts in the walk's order with their states (the order of the responses)
+	void crc(StateHasher &h) const;
+	// the port's save layout (retail's CHUNK_Collision keeps nothing a load could not rebuild; a rebuilt manager meets its contacts in another order, so
+	// the port saves its whole state: the records, each axis list's order, the candidates, the contacts in their chains, the dirty list). A load keeps the
+	// data until restore() binds the records to the loaded objects' collidables by id
+	void xfer(Xfer &x);
+	void restore(const std::function<Collidable *(std::uint32_t id)> &find);
 	// the contacts in the walk's order (diagnostics, tests)
 	std::vector<std::pair<std::uint32_t, std::uint32_t>> contactOrder() const;
 
@@ -151,4 +162,21 @@ private:
 	bool m_rebuild = false;                          ///< + 0xC06C
 	bool m_busy = false;                             ///< + 0xC06D
 	unsigned long long m_tests = 0, m_responses = 0, m_rebuilds = 0;
+	struct Saved
+	{
+		struct Rec
+		{
+			std::uint32_t id = 0, group = 0;
+			float values[6] = {};
+			bool inLists = false;
+		};
+		std::vector<Rec> records;
+		std::vector<std::pair<std::uint32_t, std::uint8_t>> axes[3];
+		std::vector<Candidate> candidates;
+		std::vector<std::vector<std::pair<std::pair<std::uint32_t, std::uint32_t>, int>>> buckets;
+		std::vector<std::uint32_t> dirty;
+		bool rebuild = false;
+		bool loaded = false;
+	};
+	Saved m_saved;
 };

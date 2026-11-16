@@ -3,7 +3,11 @@
 
 #include "GameLogic/Object/CollisionManager.h"
 
+#include "Common/StateHash.h"
+#include "Common/Xfer.h"
 #include "GameLogic/SimMath.h"
+
+#include <string>
 
 #include <algorithm>
 
@@ -851,4 +855,275 @@ void CollisionManager::update()
 	sort();
 	walk();
 	m_busy = false;
+}
+
+// ---- state ----------------------------------------------------------------------------------------------------------------------------------------------
+void CollisionManager::crc(StateHasher &h) const
+{
+	h.addU32(0xC0110000u | (std::uint32_t)(m_recordCount & 0xFFFFu));
+	std::uint32_t dirty = 0;
+	for (const Record *r = m_dirty; r; r = r->dirtyNext)
+	{
+		++dirty;
+	}
+	h.addU32(dirty);
+	h.addU32((std::uint32_t)m_contactByKey.size());
+	for (const Contact *head : m_buckets)
+	{
+		for (const Contact *c = head; c; c = c->next)
+		{
+			h.addU32(c->idA);
+			h.addU32(c->idB);
+			h.addI32(c->state);
+		}
+	}
+}
+
+void CollisionManager::xfer(Xfer &x)
+{
+	XferVersion v{ 1, 1 };
+	x.xferVersion(v);
+	const bool loading = x.isLoading();
+	Saved s;
+	if (!loading)
+	{
+		for (const Record *r : m_records)
+		{
+			Saved::Rec rec;
+			rec.id = r->id;
+			rec.group = r->group;
+			for (unsigned i = 0; i < 6; ++i)
+			{
+				rec.values[i] = r->ep[i].value;
+			}
+			rec.inLists = r->ep[0].prev != nullptr;
+			s.records.push_back(rec);
+		}
+		for (unsigned k = 0; k < 3; ++k)
+		{
+			for (const Endpoint *e = m_axisHeads[k]; e; e = e->next)
+			{
+				const unsigned index = (unsigned)(e - &e->record->ep[0]);
+				s.axes[k].emplace_back(e->record->id, (std::uint8_t)index);
+			}
+		}
+		for (const auto &c : m_candidates)
+		{
+			s.candidates.push_back(c.second);
+		}
+		std::sort(s.candidates.begin(), s.candidates.end(), [](const Candidate &a, const Candidate &b) { return a.idA != b.idA ? a.idA < b.idA : a.idB < b.idB; });
+		s.buckets.resize(kContactBuckets);
+		for (unsigned b = 0; b < kContactBuckets; ++b)
+		{
+			for (const Contact *c = m_buckets[b]; c; c = c->next)
+			{
+				s.buckets[b].push_back({ { c->idA, c->idB }, c->state });
+			}
+		}
+		for (const Record *r = m_dirty; r; r = r->dirtyNext)
+		{
+			s.dirty.push_back(r->id);
+		}
+		s.rebuild = m_rebuild;
+	}
+	std::uint32_t n = (std::uint32_t)s.records.size();
+	x.xferUnsignedInt(&n);
+	s.records.resize(n);
+	for (Saved::Rec &rec : s.records)
+	{
+		x.xferUnsignedInt(&rec.id);
+		x.xferUnsignedInt(&rec.group);
+		for (float &f : rec.values)
+		{
+			x.xferReal(&f);
+		}
+		x.xferBool(&rec.inLists);
+	}
+	for (unsigned k = 0; k < 3; ++k)
+	{
+		std::uint32_t count = (std::uint32_t)s.axes[k].size();
+		x.xferUnsignedInt(&count);
+		s.axes[k].resize(count);
+		for (auto &e : s.axes[k])
+		{
+			x.xferUnsignedInt(&e.first);
+			x.xferUnsignedByte(&e.second);
+			if (e.second > 5)
+			{
+				throw XferException("CollisionManager: an endpoint index above 5");
+			}
+		}
+	}
+	std::uint32_t cands = (std::uint32_t)s.candidates.size();
+	x.xferUnsignedInt(&cands);
+	s.candidates.resize(cands);
+	for (Candidate &c : s.candidates)
+	{
+		x.xferUnsignedInt(&c.idA);
+		x.xferUnsignedInt(&c.idB);
+		x.xferUnsignedInt(&c.counter);
+	}
+	std::uint32_t used = 0;
+	for (const auto &b : s.buckets)
+	{
+		used += b.empty() ? 0u : 1u;
+	}
+	x.xferUnsignedInt(&used);
+	if (loading)
+	{
+		s.buckets.assign(kContactBuckets, {});
+		for (std::uint32_t i = 0; i < used; ++i)
+		{
+			std::uint32_t bucket = 0, len = 0;
+			x.xferUnsignedInt(&bucket);
+			x.xferUnsignedInt(&len);
+			if (bucket >= kContactBuckets)
+			{
+				throw XferException("CollisionManager: a contact bucket above 0x492");
+			}
+			s.buckets[bucket].resize(len);
+			for (auto &c : s.buckets[bucket])
+			{
+				x.xferUnsignedInt(&c.first.first);
+				x.xferUnsignedInt(&c.first.second);
+				std::int32_t state = 0;
+				x.xferInt(&state);
+				c.second = state;
+			}
+		}
+	}
+	else
+	{
+		for (std::uint32_t b = 0; b < kContactBuckets; ++b)
+		{
+			if (s.buckets[b].empty())
+			{
+				continue;
+			}
+			std::uint32_t bucket = b, len = (std::uint32_t)s.buckets[b].size();
+			x.xferUnsignedInt(&bucket);
+			x.xferUnsignedInt(&len);
+			for (auto &c : s.buckets[b])
+			{
+				x.xferUnsignedInt(&c.first.first);
+				x.xferUnsignedInt(&c.first.second);
+				std::int32_t state = c.second;
+				x.xferInt(&state);
+			}
+		}
+	}
+	std::uint32_t dirty = (std::uint32_t)s.dirty.size();
+	x.xferUnsignedInt(&dirty);
+	s.dirty.resize(dirty);
+	for (std::uint32_t &id : s.dirty)
+	{
+		x.xferUnsignedInt(&id);
+	}
+	x.xferBool(&s.rebuild);
+	if (loading)
+	{
+		s.loaded = true;
+		m_saved = std::move(s);
+	}
+}
+
+void CollisionManager::restore(const std::function<Collidable *(std::uint32_t id)> &find)
+{
+	if (!m_saved.loaded)
+	{
+		return;
+	}
+	Saved s = std::move(m_saved);
+	m_saved = Saved{};
+	reset();
+	std::unordered_map<std::uint32_t, Record *> byId;
+	for (const Saved::Rec &rec : s.records)
+	{
+		Collidable *c = find(rec.id);
+		if (!c)
+		{
+			throw XferException("CollisionManager: the saved record " + std::to_string(rec.id) + " has no object");
+		}
+		Record *r = new Record();
+		r->source = c;
+		r->id = rec.id;
+		r->group = rec.group;
+		for (unsigned i = 0; i < 6; ++i)
+		{
+			r->ep[i].record = r;
+			r->ep[i].kind = i ^ 1u;
+			r->ep[i].value = rec.values[i];
+		}
+		c->collisionRecord = r;
+		m_records.push_back(r);
+		byId[rec.id] = r;
+	}
+	m_recordCount = m_records.size();
+	auto rec = [&](std::uint32_t id) {
+		auto it = byId.find(id);
+		if (it == byId.end())
+		{
+			throw XferException("CollisionManager: a saved reference to the unknown record " + std::to_string(id));
+		}
+		return it->second;
+	};
+	for (unsigned k = 0; k < 3; ++k)
+	{
+		Endpoint *prev = nullptr;
+		for (const auto &e : s.axes[k])
+		{
+			Endpoint *ep = &rec(e.first)->ep[e.second];
+			ep->prev = prev;
+			ep->next = nullptr;
+			if (prev)
+			{
+				prev->next = ep;
+			}
+			else
+			{
+				m_axisHeads[k] = ep;
+			}
+			prev = ep;
+		}
+	}
+	for (const Candidate &saved : s.candidates)
+	{
+		Candidate c = saved;
+		c.first = rec(c.idA);
+		c.second = rec(c.idB);
+		const std::uint64_t k = key(c.idA, c.idB);
+		m_candidates.emplace(k, c);
+		c.first->pairs.push_back(k);
+		c.second->pairs.push_back(k);
+	}
+	for (unsigned b = 0; b < kContactBuckets; ++b)
+	{
+		Contact *tail = nullptr;
+		for (const auto &saved : s.buckets[b])
+		{
+			Contact *c = new Contact();
+			c->idA = saved.first.first;
+			c->idB = saved.first.second;
+			c->first = rec(c->idA);
+			c->second = rec(c->idB);
+			c->state = saved.second;
+			c->bucket = b;
+			c->prev = tail;
+			if (tail)
+			{
+				tail->next = c;
+			}
+			else
+			{
+				m_buckets[b] = c;
+			}
+			tail = c;
+			m_contactByKey[key(c->idA, c->idB)] = c;
+		}
+	}
+	for (auto it = s.dirty.rbegin(); it != s.dirty.rend(); ++it)
+	{
+		pushDirty(*rec(*it));
+	}
+	m_rebuild = s.rebuild;
 }

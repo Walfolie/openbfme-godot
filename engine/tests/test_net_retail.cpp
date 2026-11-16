@@ -1175,8 +1175,9 @@ TEST_CASE("net retail (merge): the per-subsystem breakdown covers every word of 
 	const std::vector<std::string> fixed = { "frame, object ids, RNG", "scheduler", "objects" };
 	CHECK(std::vector<std::string>(names.begin(), names.begin() + 3) == fixed);
 	// lane AUDIO-4: TheLargeGroupAudio's gate after the invisibility
-	const std::vector<std::string> tail = { "players and teams", "settings", "economy", "combat", "victory", "skirmish AI", "experience", "weather", "invisibility",
-		"large group audio", "script engine" };
+	// fork lane COLLIDE-1: TheCollisionManager's contacts after the weather
+	const std::vector<std::string> tail = { "players and teams", "settings", "economy", "combat", "victory", "skirmish AI", "experience", "weather", "collision",
+		"invisibility", "large group audio", "script engine" };
 	REQUIRE(names.size() >= tail.size() + 3);
 	CHECK(std::vector<std::string>(names.end() - (long)tail.size(), names.end()) == tail);
 	CHECK(std::find(names.begin(), names.end(), "shroud") != names.end());

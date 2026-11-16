@@ -22,6 +22,9 @@
 #include "GameLogic/CreateAHeroSystem.h"
 #include "GameLogic/Economy.h"
 #include "GameLogic/FireLogicSystem.h"
+#include "GameLogic/Object/CollisionManager.h"
+#include "GameLogic/Object/ObjectCollision.h"
+#include "GameLogic/Object/Object.h"
 #include "GameLogic/GlobalWeatherSystem.h"
 #include "GameLogic/Map/TerrainTrees.h"
 #include "GameLogic/ScriptEngine/ScriptEngine.h"
@@ -74,6 +77,13 @@ void GameLogic::registerSave4dBlocks(GameState &gs)
 	add("obfme:Victory", saveLoad, [this](Xfer &x) { m_victory->xfer(x); }, nullptr, "victory");
 	add("obfme:Weather", saveLoad, [this](Xfer &x) { m_weather->xfer(x); }, nullptr, "weather");
 	// fork lane FIRELOGIC-1: the port's layout of retail's CHUNK_FireLogicSystem (RW 0x688384): the touched cells only; the registrations are rebuilt after the load
+	// fork lane COLLIDE-1: TheCollisionManager in the port's layout (the records bound to the loaded objects after the load)
+	add("obfme:Collision", saveLoad, [this](Xfer &x) { m_collision->xfer(x); }, [this]() {
+		m_collision->restore([this](std::uint32_t id) -> CollisionManager::Collidable * {
+			Object *o = findObjectByID(id);
+			return o ? &o->friend_collidable() : nullptr;
+		});
+	}, "collision");
 	add("obfme:FireLogic", saveLoad, [this](Xfer &x) { m_fire->xfer(x); }, [this]() { m_fire->loadPostProcess(); }, "fire logic");
 	add("obfme:Economy", saveLoad, [this](Xfer &x) { m_economy->xfer(x); }, [this]() { m_economy->finishLoad(); }, "economy");
 	add("obfme:CreateAHero", saveLoad, [this](Xfer &x) { m_createAHeroes->xfer(x); }, [this]() { m_createAHeroes->finishLoad(); }, "create-a-hero");

@@ -34,6 +34,10 @@
 #include "GameLogic/ObjectFilter.h"
 #include "GameLogic/ObjectFilterMatch.h"
 #include "GameLogic/FireLogicSystem.h"
+#include "GameLogic/Module/GateModules.h"
+#include "GameLogic/Module/ProjectileModules.h"
+#include "GameLogic/Module/SalvageCrateCollide.h"
+#include "GameLogic/Object/ObjectCollision.h"
 #include "GameLogic/SimMath.h"
 
 #include "Common/Player.h"
@@ -183,6 +187,7 @@ Object::~Object()
 	// RW 0x69A89D: the object leaves the world (the seam of S-142); ZH Object::~Object: sendObjectDestroyed (the drawable goes), then the team, then
 	// the modules (deleted in array order)
 	m_logic.friend_objectLeftWorld(*this);
+	m_logic.collisionLeave(*this); // fork lane COLLIDE-1: the record never outlives the collidable
 	m_logic.emotions().objectDied(*this); // RW 0x69A808 .. 0x69A821 (lane MODULES-2)
 	if (GameLogic *l = &m_logic)
 	{
@@ -321,12 +326,23 @@ void Object::rebuildCollideModules()
 {
 	m_collideModules.clear();
 	m_collideModulesKnown = true;
+	m_collisionResponders.clear();
 	for (const std::unique_ptr<BehaviorModule> &m : m_modules)
 	{
 		if (CollideModuleInterface *c = m ? m->getCollide() : nullptr)
 		{
 			m_collideModules.push_back(c);
 			m_collideModulesKnown = m_collideModulesKnown && c->pairFactsKnown();
+			m_collisionResponders.push_back(CollisionResponder{ CollisionResponder::COLLIDE, m.get(), dynamic_cast<GateOpenAndCloseBehavior *>(m.get()) != nullptr,
+				dynamic_cast<CrateCollide *>(m.get()) != nullptr });
+		}
+		else if (m && m->getAIUpdateInterface())
+		{
+			m_collisionResponders.push_back(CollisionResponder{ CollisionResponder::AI, m.get() }); // fork lane COLLIDE-1: the AI's collide interface (AI + 0x24)
+		}
+		else if (m && dynamic_cast<BezierProjectileBehavior *>(m.get()))
+		{
+			m_collisionResponders.push_back(CollisionResponder{ CollisionResponder::PROJECTILE, m.get() }); // fork lane COLLIDE-1
 		}
 	}
 	m_attributePool = findModule("AttributeModifierPoolUpdate"); // lane UBER-3W: attributeModifierPoolModule's answer from here on
@@ -431,6 +447,7 @@ void Object::reactToTransformChange(const Coord3D *oldPos, float oldAngle)
 		shroud->markDirty(*this, false); // RW 0x68B862 -> 0xB4E290 (VIS-1): the shroud record re-covers and re-looks in the next shroud update
 	}
 	m_logic.partition().markDirty(*this); // RW 0x68B862 / 0x68B244 -> 0xA39570 (lane MODULES-2): re-linked in the next partition update
+	m_logic.collisionDirty(*this); // fork lane COLLIDE-1: RW 0x68B87E (+ 0x4EC -> RW 0xB6C700)
 	// fork lane FIRELOGIC-1: RW 0x69355D: when a position axis (RW 0x68B777) or the angle (RW 0x68B7E8) moved by more than 0.01 (|a - b| on the x87, RW
 	// 0xBE5600), a registered object registers again with TheFireLogicSystem (RW 0x693626 .. 0x693642)
 	{
@@ -700,13 +717,41 @@ const PathfindGeometry &Object::ownPathfindGeometry(const PathfindGeometry &temp
 }
 
 // RW 0x68B244 (see Object.h)
+// fork lane COLLIDE-1
+ObjectCollidable &Object::friend_collidable()
+{
+	if (!m_collidable)
+	{
+		m_collidable = std::make_unique<ObjectCollidable>(*this);
+	}
+	return *m_collidable;
+}
+
+// lane MODCOMPAT-MOD1 / fork lane COLLIDE-1: CritterEmitterUpdate takes the record out (RW 0xB6C480) and puts it back (RW 0xB6C470, a new record)
+void Object::friend_setOutOfCollisionManager(bool out)
+{
+	if (out == m_outOfCollisionManager)
+	{
+		return;
+	}
+	m_outOfCollisionManager = out;
+	if (out)
+	{
+		m_logic.collisionLeave(*this);
+	}
+	else if (m_inWorld)
+	{
+		m_logic.collisionEnter(*this);
+	}
+}
+
 void Object::geometryChanged(bool pathfind)
 {
 	if (ShroudManager *shroud = m_logic.shroud())
 	{
 		shroud->markDirty(*this, true); // + 0x4E4 -> RW 0xB4E2A0
 	}
-	// + 0x4EC -> RW 0xB6C700: the collision manager's dirty list (no collision manager here, S-363 / S-780)
+	// + 0x4EC -> RW 0xB6C700: the collision manager's dirty list (fork lane COLLIDE-1, below)
 	m_logic.partition().markDirty(*this); // + 0x4E8 -> RW 0xA39570
 	// + 0x84 -> RW 0x6713E6: the drawable's draw modules (vslot 0x9C), client
 	if (pathfind)
@@ -717,6 +762,7 @@ void Object::geometryChanged(bool pathfind)
 			ai->addObjectToPathfindMap(*this);      // RW 0x6E85E9
 		}
 	}
+	m_logic.collisionDirty(*this); // fork lane COLLIDE-1: + 0x4EC: RW 0xB6C700 (RW 0x68B260)
 	m_logic.fireLogic().objectMoved(*this); // fork lane FIRELOGIC-1: + 0x4BC >= 0: RW 0x68836C then RW 0x688354 (RW 0x68B2A6)
 }
 

@@ -749,7 +749,8 @@ TEST_CASE("BACKLOG2 r1 determinism: three units on a build site: the draw assign
 	// pin: merge queue q52 (measured once on the merged tree and at each merge point; goals and positions unchanged): 0x162264F8 -> 0x02B42AF9 at
 	// #294 / #295's merge point (#294: SlaughterHordeContain now runs under the citadels) -> 0xB240D889 with #298 (PORT-12's
 	// MinDistFromEdgeOfMapForBuild in GameLogicSettings::crc; the 0x97DB949B above was measured without #294); #297 is client only
-	CHECK(a.hashes.back() == 0xB240D889U);   // q19: BACKLOG-8 hashes the formation and march rows of AIData / GameData in GameLogicSettings::crc (unconditionally) and moves the march;
+	// pin: moved by the fork's earlier lanes (SPELLRECHARGE-1, SPAWNUNIT-1, FIRELOGIC-1: not bisected; the same value with COLLIDE-1's manager switched off), re-measured on the fork's tree at COLLIDE-1, Windows MSVC: 0xB240D889 -> 0xB5E5FF4F; fork lane COLLIDE-1 (TheCollisionManager's contacts in the hash, its responses): -> 0x407BFEC3
+	CHECK(a.hashes.back() == 0x407BFEC3U);   // q19: BACKLOG-8 hashes the formation and march rows of AIData / GameData in GameLogicSettings::crc (unconditionally) and moves the march;
 	                                         // re-measured on the merged tree (a CI host); was 0x78A9CB12 (q18: DEVPORT-3C castle keep gate / Horde removal record, before 0x2BD4804B); goals and positions unchanged
 	// every unit left the spot it stood on
 	CHECK(a.positions[0] != a.goals[0]);

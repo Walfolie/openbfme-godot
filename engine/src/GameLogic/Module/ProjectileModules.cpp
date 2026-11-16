@@ -462,7 +462,8 @@ void BezierProjectileBehavior::projectileFireAtObjectOrPosition(const Object *vi
 	m_fireFrame = obj->logic().getFrame();
 	// lane FLANK-1: an object without KindOf NO_COLLIDE is in RotWK's collision manager (RW 0x68E31F): its contacts reach the collide interface while it flies
 	static const unsigned kNoCollide = (unsigned)CombatNames::kindOf("NO_COLLIDE");
-	if (!obj->isKindOf(kNoCollide))
+	// (fork lane COLLIDE-1: in the Faithful profile TheCollisionManager holds it; the list is the Uber profile's pass)
+	if (!obj->isKindOf(kNoCollide) && !obj->logic().collisionManagerActive())
 	{
 		obj->logic().combat().noteFlyingProjectile(obj->getID());
 	}

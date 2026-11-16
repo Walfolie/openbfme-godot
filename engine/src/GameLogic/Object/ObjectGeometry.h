@@ -57,6 +57,8 @@ std::vector<Shape> shapesOf(const ThingTemplate &tt);
 const std::vector<Shape> &cachedShapesOf(const ThingTemplate &tt);
 // RW 0xAD1920
 float maxHeightAbovePosition(const std::vector<Shape> &shapes);
+// fork lane COLLIDE-1: RW 0xAD1A00: the largest of 0 and each active sphere's radius (the other shapes 0; no offset)
+float maxHeightBelowPosition(const std::vector<Shape> &shapes);
 // RW 0xAD2040: the box around the active shapes in the object's own space, from 0 .. 0 (each shape's offset +- its major radius in x, a box's minor and the
 // others' major radius in y; a sphere's offset z +- its major radius, the others' offset z .. offset z + height)
 void localBox(const std::vector<Shape> &shapes, float lo[3], float hi[3]);

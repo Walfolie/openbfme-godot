@@ -65,6 +65,7 @@
 #include <vector>
 
 class CollideModuleInterface;
+class ObjectCollidable;
 class ExperienceTracker;
 class GameLogic;
 class ObjectClientHooks;
@@ -453,7 +454,29 @@ public:
 	// lane MODCOMPAT-MOD1: the object's record left TheCollisionManager (RW 0xB6C480; CritterEmitterUpdate RW 0x8CD1F6 removes and re-adds it): the contact
 	// passes (AIWorld::processCollisions, CombatState::processProjectileContacts) leave it out. Saved and hashed by the module that sets it
 	bool isOutOfCollisionManager() const { return m_outOfCollisionManager; }
-	void friend_setOutOfCollisionManager(bool out) { m_outOfCollisionManager = out; }
+	void friend_setOutOfCollisionManager(bool out);
+	// fork lane COLLIDE-1: the object's collidable (Object + 0x70) and its TheCollisionManager record (+ 0x4EC); RW + 0x4A4, the object it ignores in a contact
+	// (RW 0x68EEC3; SpecialAbilityUpdate sets it, RW 0x853A71)
+	ObjectCollidable *collidable() const { return m_collidable.get(); }
+	ObjectCollidable &friend_collidable();
+	ObjectID ignoreCollisionsWith() const { return m_ignoreCollisionsWith; }
+	void setIgnoreCollisionsWith(ObjectID id) { m_ignoreCollisionsWith = id; }
+	// fork lane COLLIDE-1: what answers a contact (RW 0x68EEC3: every module with a collide interface, in module order: the collide modules, the AI, the
+	// projectile's flight); rebuilt with the collide modules
+	struct CollisionResponder
+	{
+		enum Kind
+		{
+			COLLIDE,
+			AI,
+			PROJECTILE
+		};
+		Kind kind;
+		BehaviorModule *module;
+		bool gate = false;  ///< a GateOpenAndCloseBehavior (statistics: AIWorld::gateContacts)
+		bool crate = false; ///< a CrateCollide (statistics: AIWorld::crateContacts)
+	};
+	const std::vector<CollisionResponder> &collisionResponders() const { return m_collisionResponders; }
 	// lane GARRISON-1: RW + 0x284, the frame the object was put in its container (RW 0x6901AE; 0 when not contained, RW 0x69024C)
 	UnsignedInt getContainedFrame() const { return m_containedFrame; }
 	void friend_setContainedFrame(UnsignedInt frame) { m_containedFrame = frame; }
@@ -624,6 +647,9 @@ private:
 	std::vector<std::unique_ptr<BehaviorModule>> m_modules; ///< helpers first, then the template's behaviors
 	std::vector<CollideModuleInterface *> m_collideModules; ///< lane UBER-2B: m_modules' collide interfaces, in order (rebuilt by buildModules / friend_replaceModule)
 	bool m_collideModulesKnown = true;
+	std::vector<CollisionResponder> m_collisionResponders; ///< fork lane COLLIDE-1
+	std::unique_ptr<ObjectCollidable> m_collidable;     ///< fork lane COLLIDE-1 (Object + 0x70)
+	ObjectID m_ignoreCollisionsWith = 0;                 ///< RW + 0x4A4
 	BehaviorModule *m_attributePool = nullptr; ///< lane UBER-3W: findModule("AttributeModifierPoolUpdate"), valid once m_moduleCachesBuilt
 	class PhysicsBehavior *m_physics = nullptr;      ///< lane PERF-HD: the first PhysicsBehavior module, valid while m_moduleLookupsCached
 	class SlavedUpdateInterface *m_slaved = nullptr; ///< lane PERF-HD: the first SlavedUpdateInterface module, valid while m_moduleLookupsCached

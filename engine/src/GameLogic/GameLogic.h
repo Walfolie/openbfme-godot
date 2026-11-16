@@ -101,6 +101,7 @@ class BuildAssistantSell;
 class InvisibilityManager;
 class DOTManager;
 class FireLogicSystem;
+class CollisionManager;
 class TerrainTrees;
 class SkirmishAIManager;
 class ShroudManager;
@@ -457,6 +458,13 @@ public:
 	// lane DECOMP-1: TheGameLogic + 0x174, the DOTManager (DOTNugget's damage over time; update in phase 1 after the weather, RW 0x62E8CF)
 	DOTManager &dot() { return *m_dot; }
 	FireLogicSystem &fireLogic() { return *m_fire; } // fork lane FIRELOGIC-1: TheFireLogicSystem (RW 0xDE46A8)
+	// fork lane COLLIDE-1: TheCollisionManager (RW 0xDE4360). Faithful only: the Uber profile keeps its own contact passes (AIWorld::processCollisions and the
+	// crate, gate and projectile passes)
+	CollisionManager &collision() { return *m_collision; }
+	bool collisionManagerActive() const;
+	void collisionEnter(Object &obj); // RW 0x68E3C7 .. 0x68E411 -> RW 0xB6C470
+	void collisionLeave(Object &obj); // RW 0x68C1CC -> RW 0xB6C480
+	void collisionDirty(Object &obj); // + 0x4EC -> RW 0xB6C700
 	const FireLogicSystem &fireLogic() const { return *m_fire; }
 	const DOTManager &dot() const { return *m_dot; }
 	// lane SPELL-3: TheTerrainLogic + 0x578, the map's optimized trees (GameLogic/Map/TerrainTrees.h); filled by MapObjectLoop, hashed once a tree changed
@@ -1023,6 +1031,7 @@ private:
 	std::unique_ptr<InvisibilityManager> m_invisibility; // lane STEALTH-1
 	std::unique_ptr<DOTManager> m_dot;                   // lane DECOMP-1
 	std::unique_ptr<FireLogicSystem> m_fire;             // fork lane FIRELOGIC-1
+	std::unique_ptr<CollisionManager> m_collision;       // fork lane COLLIDE-1
 	std::unique_ptr<TerrainTrees> m_trees;               // lane SPELL-3
 	std::unique_ptr<ScriptEngine> m_scriptEngine;        // lane SCRIPT-1
 	CastleTemplateStore m_castleTemplates;
