@@ -139,8 +139,9 @@ public:
 	// lane GARRISON-3: HordeContain::onContaining (RW 0x872D0A) assigns and places only a member memberIndex does not hold (RW 0x872D87: the map's find
 	// against its end); a member that kept its slot rejoins the contain list as it is. True when the member held a slot (and rejoined), false otherwise.
 	bool rejoinMember(ObjectId id, const std::string &templateName);
-	// RW 0x873D48: one fill-in step.
+	// RW 0x873D48: one fill-in step (module slot 0x94; fork lane AOD-1: AODHordeContain's is RW 0x9188EB, false: setFillInEnabled(false))
 	bool fillInLowestFreeSlot();
+	void setFillInEnabled(bool on) { m_fillInEnabled = on; }
 	// the `while (fillIn());` loop; returns the number of steps taken
 	int fillInAll();
 
@@ -199,4 +200,5 @@ private:
 	bool m_dirty = false;                      // H+0x120
 	bool m_flag174 = false;                    // H+0x174
 	bool m_built = false;                      // H+0x198
+	bool m_fillInEnabled = true;               // fork lane AOD-1 (configuration: not hashed)
 };

@@ -961,7 +961,7 @@ TEST_CASE("backlog8 retail: a goblin horde that keeps a wall to scale (RW 0x86C6
 }
 
 TEST_CASE("backlog8 retail: the FLOATING_Z horde members of the retail data: the Mumakil's Haradrim archers (speed 0) never reach the hub's near arm; the "
-		  "Oathbreakers' AODHordeContain is unbound, so their horde has no contain and no members")
+		  "Oathbreakers' AODHordeContain (fork lane AOD-1) has its ghosts")
 {
 	if (!haveWorld())
 	{
@@ -976,11 +976,13 @@ TEST_CASE("backlog8 retail: the FLOATING_Z horde members of the retail data: the
 	{
 		a.logic.runLogicFrame();
 	}
-	// AODHordeContain (ArmyOfTheDeadLocomotor members, FLOATING_Z) has no port: the factory counts it (S-140) and the object gets no contain module, so the
-	// Oathbreakers are a horde object without members: the member pass, and with it the height rule, never runs for them
-	CHECK(unported.at("AODHordeContain") == aodBefore + 1);
-	CHECK(dead->getContain() == nullptr);
-	CHECK(hordeContainOf(dead) == nullptr);
+	// fork lane AOD-1: AODHordeContain is ported (GameLogic/Object/Contain/AODHordeContain.h): the factory no longer counts it as unported, the horde has
+	// its contain and a ghost in each of its 40 slots; its member order moves them straight (RW 0x87DB01), not through the hub's FLOATING_Z rule
+	CHECK((unported.count("AODHordeContain") ? unported.at("AODHordeContain") : 0) == aodBefore);
+	HordeContain *ghosts = dynamic_cast<HordeContain *>(dead->getContain());
+	REQUIRE(ghosts != nullptr);
+	CHECK(ghosts->getContainCount() == ghosts->getSlotCount());
+	CHECK(ghosts->getSlotCount() == 40u);
 	// the archers on the Mumakil: a HordeContain inside the Mumakil's HordeTransportContain; FloatingCatapultLocomotor (FLOATING_Z) with speed 0, so the
 	// snap threshold min(acceleration, 0.2 * speed) is 0 and no distance is below it: the near arm (where the FLOATING_Z rule lives) is never taken
 	const ContainModuleInterface *howdah = mumak->getContain();

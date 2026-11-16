@@ -103,7 +103,7 @@ void MapHordeSpawn::spawn(const ThingTemplate &tmpl, const ThingFactory &things,
 	std::string className;
 	for (const ThingTemplate::Nugget &n : tmpl.behaviorModules().nuggets())
 	{
-		if (n.name == "HordeContain" || n.name == "HorseHordeContain")
+		if (n.name == "HordeContain" || n.name == "HorseHordeContain" || n.name == "AODHordeContain") // fork AOD-1
 		{
 			result.isHorde = true;
 			className = n.name;

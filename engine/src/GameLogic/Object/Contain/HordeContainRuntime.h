@@ -29,6 +29,7 @@
 
 #include "Common/INIDataTypes.h"
 #include "GameLogic/Module/UpdateModule.h"
+#include "GameLogic/Object/Contain/HordeContainCore.h"
 
 #include <array>
 #include <cstdint>
@@ -40,6 +41,7 @@
 #include <vector>
 
 class HordeContainCore;
+class HordeAIUpdate;
 class ThingTemplate;
 struct HordeContainModuleData;
 struct MeleeBehaviorModuleData;
@@ -345,7 +347,8 @@ public:
 	// lane HORDE-2: the stop line of the re-forming after a melee (S-584)
 	static const char *reformStopLine();
 	// the member pass of one update (RW 0x875DC3-class slot, B1 HordeMemberOrder00245420 per member); true when members still have work
-	bool runMemberPass();
+	// module slot 0x8C (RW 0x873FE8; fork lane AOD-1: AODHordeContain RW 0x87D9F6 runs its trail first)
+	virtual bool runMemberPass();
 	// the model condition mirror of TransportContain::update (BFME: the owner's MOVING becomes the passengers' TRANSPORT_MOVING)
 	void mirrorMovingCondition();
 	bool movementEnabled() const { return m_movementEnabled; }
@@ -446,6 +449,7 @@ public:
 	const std::vector<float> &flankHistory() const { return m_flankAngles; }
 
 	friend struct Horde2HashAccess; // the HORDE-2 hash mutation tests (test_horde2_hash.cpp)
+	friend class AODHordeContain;  // fork lane AOD-1: the subclass reads the member pass's state
 
 private:
 	void createPayload();
@@ -455,7 +459,13 @@ private:
 	// lane GARRISON-3: a member on the way that is gone or dead gives its kept slot back (S-1620 inference)
 	void forgetMemberOnTheWay(ObjectID id);
 	// the member pass pieces (HordeMemberPass.cpp)
-	void memberOrder(Object &member, const Coord3D &slotPos, float orientation, bool force);
+	// module slot 0x90 (RW 0x877A7A; fork lane AOD-1: AODHordeContain RW 0x87DB01)
+	virtual void memberOrder(Object &member, const Coord3D &slotPos, float orientation, bool force);
+	// fork lane AOD-1: the member pass's goal for a slotted member, the contain's slot 7 as the pass reads it (RW 0x874080: HordeContain RW 0x877D89, its melee
+	// destination while the horde melees; AODHordeContain RW 0x87DEFB); `slotAngle` the slot record's angle
+	virtual Coord3D memberPassSlot(Object &member, const HordeContainCore::Placement &owner, const HordeAIUpdate *meleeHai, float &slotAngle);
+	// fork lane AOD-1: HordeContain::onContaining is a virtual (contain slot 0x58); AODHordeContain RW 0x87D649 does its part before HordeContain's
+	virtual void onMemberContaining(Object *obj) { (void)obj; }
 	void moveHub(Object &member, const Coord3D &dest, float orientation);
 	void reassignMembersToNearestSlots();
 	bool slotCellClear(Object &member) const;

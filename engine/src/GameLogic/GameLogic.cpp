@@ -695,7 +695,7 @@ void GameLogic::update(int phase)
 			{
 				noteStop("[S-780] collision (fork lane COLLIDE-1): TheCollisionManager runs as RotWK's (RW 0xB6E6B0: the axis lists, the pair tables and their order, the cached test, "
 					"the responses through every module's collide interface in module order); not retail: the contact's location and normal (null), the save layout (the port's "
-					"whole state, obfme:Collision), and the collide interfaces of modules the port does not have (FireWeaponCollide, AODCrushCollide, CivilianSpawnCollide, "
+					"whole state, obfme:Collision), and the collide interfaces of modules the port does not have (FireWeaponCollide, CivilianSpawnCollide, "
 					"MissileUpdate, ToppleUpdate, DeflectSpecialPower, the other crate collides) and of SpecialAbilityUpdate's ignore id (+ 0x4A4, RW 0x853A71: never set)");
 				noteStop("[S-781] collision: allied ground units overlap: AIUpdate::onCollide (RW 0x66E233) reacts to enemies only and PhysicsBehavior has no collide interface; "
 					"RotWK's allied path clearing and crowd avoidance (RW 0x6F503B / 0x6F53AF -> 0x66C66E -> 0x66DA5F, move-away search RW 0x6FB231, AI state 26) is a separate "

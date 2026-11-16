@@ -110,13 +110,22 @@ AODCrushCollide::AODCrushCollide(Thing *thing, const CrushData *data)
 
 int AODCrushCollide::deadCollideSize(const Object &obj)
 {
+	// the object table's row (RotWK: parseIndexList RW 0x42E976 over SMALL / MEDIUM / LARGE, RW 0xDA3D9C) stores the index; a BFME1 table keeps the token
 	const FieldValue *v = obj.getTemplate()->findField("DeadCollideSize");
-	const RawTokens *raw = v ? std::get_if<RawTokens>(v) : nullptr;
+	if (!v)
+	{
+		return 0;
+	}
+	if (const long long *n = std::get_if<long long>(v))
+	{
+		return (int)(signed char)*n; // movsx byte (RW 0x8C03E0)
+	}
+	const RawTokens *raw = std::get_if<RawTokens>(v);
 	if (!raw || raw->tokens.empty())
 	{
 		return 0;
 	}
-	static const char *const kNames[] = { "SMALL", "MEDIUM", "LARGE" }; // RW 0xDA3D9C (parseIndexList RW 0x42E976)
+	static const char *const kNames[] = { "SMALL", "MEDIUM", "LARGE" };
 	for (int i = 0; i < 3; ++i)
 	{
 		if (AsciiStringUtil::compareNoCase(raw->tokens[0], kNames[i]) == 0)

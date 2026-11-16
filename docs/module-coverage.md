@@ -292,7 +292,7 @@ The live report's `unported_modules` (objects alive at the end of the run) of ei
 | 193 | PillageModule | Behavior | 3 | 2 | ported |
 | 194 | ToppleUpdate | Behavior | 3 | 3 | missing |
 | 195 | W3DLaserDraw | Draw | 3 | 3 | missing |
-| 196 | AODHordeContain | Behavior | 2 | 2 | missing |
+| 196 | AODHordeContain | Behavior | 2 | 2 | ported |
 | 197 | AllowBannerSpawnUpgrade | Behavior | 2 | 2 | missing |
 | 198 | CivilianSpawnCollide | Behavior | 2 | 2 | missing |
 | 199 | DeflectSpecialPower | Behavior | 2 | 1 | missing |

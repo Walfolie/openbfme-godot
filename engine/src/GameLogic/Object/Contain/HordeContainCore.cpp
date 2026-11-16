@@ -371,7 +371,7 @@ int HordeContainCore::fillInAll()
 // RW 0x873D48
 bool HordeContainCore::fillInLowestFreeSlot()
 {
-	if (m_freeList.empty())
+	if (!m_fillInEnabled || m_freeList.empty())
 	{
 		return false;
 	}

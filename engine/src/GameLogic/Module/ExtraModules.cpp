@@ -11,6 +11,7 @@
 #include "GameLogic/Module/CritterEmitterUpdate.h"
 #include "GameLogic/Module/DamageFieldUpdate.h"
 #include "GameLogic/Module/OathbreakerModules.h"
+#include "GameLogic/Object/Contain/AODHordeContain.h"
 #include "GameLogic/Module/EvacuateDamage.h"
 #include "GameLogic/Module/ExtraCreateModules.h"
 #include "GameLogic/Module/ExtraDieModules.h"
@@ -60,6 +61,7 @@ void ExtraModules::registerAll(ModuleFactory &modules)
 	DamageFieldUpdate::registerModule(modules);             // fork DAMAGEFIELD-1
 	AODCrushCollide::registerModule(modules);               // fork AOD-1
 	OathbreakersFadeAwayBehavior::registerModule(modules);  // fork AOD-1
+	AODHordeContain::registerModule(modules);               // fork AOD-1
 	CommandButtonHuntUpdate::registerModule(modules);       // lane MODCOMPAT-MOD1
 	CritterEmitterUpdate::registerModule(modules); // lane MODCOMPAT-MOD1
 	AudioLoopUpgrade::registerModule(modules);     // lane MODCOMPAT-MOD1

@@ -693,18 +693,7 @@ bool HordeContain::runMemberPass()
 			continue; // a member without a slot stands where creation put it (S-149)
 		}
 		float slotAngle = 0.0f;
-		// lane BACKLOG-8 r2: the slot keeps the horde's height (RW 0x877D89 -> RW 0x875847: x / y the horde's position plus the turned offset, z the horde's
-		// position + 0x40); the port put it on the ground, so the near arm's FLOATING_Z rule (RW 0x874F30: the slot as it is) never showed
-		Coord3D slot = m_core->getSlotWorldPos(m->getID(), owner, &slotAngle);
-		// lane MOVE-2 r3: the pass's slot is the contain's slot 0x1C (RW 0x874080 -> 0x877D89): in a melee the member's melee destination (RW 0x98F819)
-		if (meleeHai)
-		{
-			Coord3D dest;
-			if (meleeHai->meleeDestination(m->getID(), dest))
-			{
-				slot = dest;
-			}
-		}
+		Coord3D slot = memberPassSlot(*m, owner, meleeHai, slotAngle);
 		float angle = SimMath::addf32(owner.angle, slotAngle);
 		if (!m_data->horde.m_isPorcupineFormation)
 		{
@@ -723,6 +712,23 @@ bool HordeContain::runMemberPass()
 	}
 	checkWallScalingDone(); // RW 0x874681 (lane BACKLOG-8)
 	return m_workDone;
+}
+
+Coord3D HordeContain::memberPassSlot(Object &m, const HordeContainCore::Placement &owner, const HordeAIUpdate *meleeHai, float &slotAngle)
+{
+	// lane BACKLOG-8 r2: the slot keeps the horde's height (RW 0x877D89 -> RW 0x875847: x / y the horde's position plus the turned offset, z the horde's
+	// position + 0x40); the port put it on the ground, so the near arm's FLOATING_Z rule (RW 0x874F30: the slot as it is) never showed
+	Coord3D slot = m_core->getSlotWorldPos(m.getID(), owner, &slotAngle);
+	// lane MOVE-2 r3: the pass's slot is the contain's slot 0x1C (RW 0x874080 -> 0x877D89): in a melee the member's melee destination (RW 0x98F819)
+	if (meleeHai)
+	{
+		Coord3D dest;
+		if (meleeHai->meleeDestination(m.getID(), dest))
+		{
+			slot = dest;
+		}
+	}
+	return slot;
 }
 
 // B1 HordeMemberOrder00245420::apply (RW 0x877A7A); the frozen formation (H+0x1FC) and the engaged-target destination (H+0x204) are melee state (M2)

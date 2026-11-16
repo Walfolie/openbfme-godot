@@ -397,6 +397,7 @@ bool HordeContain::addToContain(Object *obj)
 	}
 	m_members.push_back(obj);
 	obj->friend_setContainedBy(getObject());
+	onMemberContaining(obj); // fork lane AOD-1: the subclass's onContaining part (AODHordeContain RW 0x87D649)
 	// RW 0x872D0A: onContaining records the horde as the member's producer.
 	obj->setProducer(getObject());
 	const int bit = hordeMemberStatusBit();
