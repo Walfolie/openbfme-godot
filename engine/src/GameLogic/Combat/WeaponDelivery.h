@@ -48,6 +48,8 @@ struct ProjectileShot
 	int barrel = 0;
 	int slot = 0;                                   ///< the firing weapon slot (RW ctx + 0xC)
 	const ProjectileNugget *nugget = nullptr;       ///< the nugget that fired (the projectile template, the launch bone slot override)
+	ObjectID weaponOwner = INVALID_ID;              ///< the firing weapon's owner (RW Weapon + 8; fork lane STREAM-1)
+	ObjectID stream = INVALID_ID;                   ///< the firing weapon's projectile stream object (RW Weapon + 0x5C; fork lane STREAM-1)
 };
 
 // What the client side knows about a model and the logic does not: where a weapon's launch bone is. TARGET RW 0x6CAB85 (calcProjectileLaunchPosition) asks the

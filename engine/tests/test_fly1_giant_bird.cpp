@@ -33,6 +33,7 @@
 #include "GameLogic/Combat/CombatState.h"
 #include "GameLogic/Module/GiantBirdAIUpdate.h"
 #include "GameLogic/Module/SpawnBehavior.h"
+#include "GameLogic/Module/ProjectileStreamUpdate.h"
 #include "GameLogic/Module/StrafeAreaUpdate.h"
 #include "GameLogic/NewGame/NewGame.h"
 #include "GameLogic/Object/Object.h"
@@ -1059,4 +1060,74 @@ TEST_CASE("strafe1 retail: Dragon Strike: the dragon comes in from the map edge 
 	CHECK(goneFrame == 157);
 	CHECK(before == 3000.0f);
 	CHECK(after == 0.0f); // DragonStrikeStrafeWeapon (3000 FLAME at 25%) burns the whole horde
+}
+
+TEST_CASE("stream1 retail: a fire drake's flame makes its FlamethrowerProjectileStream, every flame projectile at the victim joins its ring, and the stream "
+		  "goes once the drake is gone and its flames are out (Weapon RW 0x6CD1FD, ProjectileStreamUpdate RW 0x7408A8 / 0x740AE5)")
+{
+	OPENBFME_REQUIRE_START(s);
+	FlyArena arena(*s, "FactionMordor", "FactionMen");
+	arena.clearCreeps();
+	GameLogic &logic = arena.logic();
+	Object *drake = arena.make("WildFireDrake", arena.a, 1500.0f, 1200.0f);
+	Object *horde = arena.make("GondorFighterHorde", arena.b, 1580.0f, 1200.0f);
+	arena.step(2);
+	const ObjectID drakeId = drake->getID();
+	AIUpdateInterface *ai = drake->getAIUpdateInterface();
+	REQUIRE(ai);
+	REQUIRE(ai->aiAttackObject(horde, CMD_FROM_PLAYER));
+	auto findStream = [&]() -> Object * {
+		Object *found = nullptr;
+		for (Object *o = logic.getFirstObject(); o; o = o->getNextObject())
+		{
+			found = o->getTemplate()->getName() == "FlamethrowerProjectileStream" ? o : found;
+		}
+		return found;
+	};
+	int madeFrame = -1, firstAdd = -1, streams = 0;
+	ObjectID streamId = INVALID_ID;
+	ProjectileStreamUpdate *update = nullptr;
+	for (int f = 0; f < 200 && firstAdd < 0; ++f)
+	{
+		arena.step();
+		Object *st = findStream();
+		if (st && madeFrame < 0)
+		{
+			madeFrame = f;
+			streamId = st->getID();
+			update = dynamic_cast<ProjectileStreamUpdate *>(st->findModule("ProjectileStreamUpdate"));
+			REQUIRE_MESSAGE(update, "FlamethrowerProjectileStream runs its ProjectileStreamUpdate");
+		}
+		if (update && update->nextFreeIndex() != 0)
+		{
+			firstAdd = f;
+		}
+	}
+	for (Object *o = logic.getFirstObject(); o; o = o->getNextObject())
+	{
+		streams += o->getTemplate()->getName() == "FlamethrowerProjectileStream" ? 1 : 0;
+	}
+	MESSAGE("stream made at frame " << madeFrame << ", first projectile at " << firstAdd << ", next free " << (update ? update->nextFreeIndex() : -1));
+	REQUIRE(update);
+	CHECK(streams == 1);
+	CHECK(update->owningObject() == drakeId);
+	CHECK(update->projectileAt(0) == INVALID_ID); // the first victim breaks the line (a hole) before its first projectile
+	CHECK(update->projectileAt(1) != INVALID_ID);
+	CHECK(update->nextFreeIndex() == 2);
+	const Object *st = logic.findObjectByID(streamId);
+	REQUIRE(st);
+	CHECK(st->getPosition()->x == drake->getPosition()->x); // moved to the owner at each add (RW 0x90FBEE)
+	CHECK(st->getPosition()->y == drake->getPosition()->y);
+	// measured on this tree (engine pins, not retail values)
+	CHECK(madeFrame == 7); // the drake's approach and pre-attack, then the first shot makes the stream
+	CHECK(firstAdd == 7);   // the same shot's projectile joins it
+	logic.destroyObject(drake);
+	int goneFrame = -1;
+	for (int f = 0; f < 200 && goneFrame < 0; ++f)
+	{
+		arena.step();
+		goneFrame = logic.findObjectByID(streamId) ? -1 : f;
+	}
+	MESSAGE("stream gone " << goneFrame << " frames after the drake");
+	CHECK(goneFrame == 3); // the ring empties (its projectiles gone), then the stream with no owner is destroyed
 }

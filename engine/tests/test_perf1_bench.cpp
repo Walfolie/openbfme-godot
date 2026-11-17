@@ -603,6 +603,8 @@ TEST_CASE("perf1: the big battle (400 frames) and a 4-player AI skirmish after a
 	// Ambient movement: target idle wandering adds RNG draws and origin state,
 	// so these engine references are measured again for this simulation change.
 	const std::vector<std::uint32_t> battleRef = perf1::readHashes("big_battle_400.hashes");
+	// pin: fork STREAM-1 re-measured skirmish4_6000 (first different frame 993): a fire drake's flame makes its FlamethrowerProjectileStream object (Weapon
+	// RW 0x6CD1FD), one more object than before; without that object the old vector held in every frame
 	const std::vector<std::uint32_t> skirmishRef = perf1::readHashes("skirmish4_6000.hashes");
 	// OPENBFME_PERF1_REGEN=1 rewrites the two reference vectors from this build instead of comparing: run it only when a merged change is MEANT to
 	// change the simulation (a retail port), and say so in the commit; a pure optimisation must pass against the stored vectors unchanged

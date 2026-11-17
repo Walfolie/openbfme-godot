@@ -331,7 +331,7 @@ The live report's `unported_modules` (objects alive at the end of the run) of ei
 | 232 | HordeSiegeEngineContain | Behavior | 1 | 1 | ported |
 | 233 | HordeWorkerAIUpdate | Behavior | 1 | 1 | base AI |
 | 234 | PartTheHeavensUpdate | Behavior | 1 | 1 | missing |
-| 235 | ProjectileStreamUpdate | Behavior | 1 | 1 | missing |
+| 235 | ProjectileStreamUpdate | Behavior | 1 | 1 | ported |
 | 236 | SalvageCrateCollide | Behavior | 1 | 1 | parsed only |
 | 237 | ShareExperienceBehavior | Behavior | 1 | 1 | ported |
 | 238 | SpellRechargeModifierUpgrade | Behavior | 1 | 1 | ported |

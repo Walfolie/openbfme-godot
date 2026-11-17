@@ -31,6 +31,7 @@ list(APPEND OPENBFME_SIM_SOURCES
     src/GameLogic/Module/HordeTransportContainDamage.cpp # fork HORDEDMG-1
     src/GameLogic/Module/SpecialEnemySenseUpdate.cpp # fork SENSE-1
     src/GameLogic/Module/StrafeAreaUpdate.cpp # fork STRAFE-1
+    src/GameLogic/Module/ProjectileStreamUpdate.cpp # fork STREAM-1
     src/GameLogic/FireLogicSystem.cpp # fork FIRELOGIC-1: TheFireLogicSystem (the terrain fire grid)
     src/GameLogic/Object/CollisionManager.cpp # fork COLLIDE-1: TheCollisionManager's library
     src/GameLogic/Object/ObjectCollision.cpp # fork COLLIDE-1: an Object's collidable

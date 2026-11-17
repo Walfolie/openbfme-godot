@@ -78,6 +78,15 @@ public:
 	virtual float groundHeightAt(float x, float y) = 0;
 	// a LinearTarget offset rotated by the owner's orientation, z = ground height (RW 0x6CC2B4)
 	virtual Coord3D linearTargetPosition(float offsetX, float offsetY) = 0;
+	// fork lane STREAM-1, RW 0x6CD1FD prepareProjectileStreamForFiring (called with a non-empty ProjectileStreamName): 0 without the owner `ownerID`;
+	// `current` while that object is alive; else a new object of the template `name` for the owner's controlling player's default team (RW 0x6D165E), 0 when
+	// none was made. A host without objects keeps `current`.
+	virtual unsigned projectileStream(const std::string &name, unsigned ownerID, unsigned current)
+	{
+		(void)name;
+		(void)ownerID;
+		return current;
+	}
 };
 
 // A shot at a target: the owner position, the victim (if any) and the position (a position target, a scattered position or the linear target).
@@ -126,6 +135,7 @@ public:
 	void setOwnerID(unsigned id) { m_ownerID = id; }
 	void setLeechRangeDeadline(std::uint32_t frame) { m_leechRangeDeadline = frame; } // + 0x50 (RW 0x6CF56F: createAndFireTempWeapon's frame + 1)
 	int getSlot() const { return m_slot; }
+	unsigned projectileStreamID() const { return m_projectileStreamID; } // + 0x5C (fork lane STREAM-1)
 
 	// ---- status ----
 	// RW 0x6CD142. `valid` (optional): set to false when the answer is PRE_ATTACK / FIRING (a write-back must not store those).
@@ -230,6 +240,7 @@ private:
 	std::uint32_t m_leechRangeDeadline = 0;
 	unsigned m_linearTargetCursor = 0;
 	int m_preAttackJitter = 0;
+	unsigned m_projectileStreamID = 0; ///< + 0x5C, the ProjectileStreamName object (fork lane STREAM-1)
 };
 
 // =============================================================================================================================

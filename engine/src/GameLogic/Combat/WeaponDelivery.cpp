@@ -2006,6 +2006,8 @@ void ObjectWeaponDelivery::fireWeaponTemplate(const WeaponBonus &bonus, int curB
 			shot.barrel = curBarrel;
 			shot.slot = m_firing->getSlot(); // the firing weapon's slot (lane DECOMP-1 r3); the nugget's WeaponLaunchBoneSlotOverride still wins in the launcher
 			shot.nugget = &pn;
+			shot.weaponOwner = m_firing->getOwnerID();
+			shot.stream = m_firing->projectileStreamID();
 			if (pn.m_useAlwaysAttackOffset)
 			{
 				// RW 0x90FC99 (slot 6): the target is the AlwaysAttackHereOffset in the source's frame, whatever the victim is: ((m2*oz + m1*oy) + m0*ox) + t per row

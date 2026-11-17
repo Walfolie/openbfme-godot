@@ -10,6 +10,7 @@
 #include "Common/PlayerList.h"
 #include "Common/StateHash.h"
 #include "GameLogic/SnapshotXfer.h"
+#include "Common/Thing/ThingFactory.h"
 #include "Common/Thing/ThingTemplate.h"
 #include "GameLogic/AI/AIWorld.h"
 #include "GameLogic/AI/TurretAI.h"
@@ -157,6 +158,29 @@ public:
 		p.y = SimMath::addf32(p.y, y);
 		p.z = m_w.owner().logic().getGroundHeight(p.x, p.y);
 		return p;
+	}
+	// fork lane STREAM-1, RW 0x6CD1FD
+	unsigned projectileStream(const std::string &name, unsigned ownerID, unsigned current) override
+	{
+		GameLogic &logic = m_w.owner().logic();
+		Object *owner = logic.findObjectByID(ownerID); // RW 0x6CD227
+		if (!owner)
+		{
+			return 0;
+		}
+		if (logic.findObjectByID(current)) // RW 0x6CD23D
+		{
+			return current;
+		}
+		const ThingTemplate *tt = logic.things().findTemplate(name); // RW 0x6D1305
+		if (!tt)
+		{
+			logic.reportError("weapon: the ProjectileStreamName '" + name + "' is not an object template");
+			return 0;
+		}
+		Player *player = owner->getControllingPlayer(); // RW 0x68B678, + 0x30C
+		Object *stream = logic.newObject(tt, player ? player->getDefaultTeam() : nullptr, ObjectStatusMaskType{});
+		return stream ? stream->getID() : 0;
 	}
 
 private:

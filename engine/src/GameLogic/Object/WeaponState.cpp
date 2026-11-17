@@ -86,6 +86,7 @@ Weapon &Weapon::operator=(const Weapon &that)
 		m_leechRangeDeadline = 0;
 		m_linearTargetCursor = 0;
 		m_preAttackJitter = 0;
+		m_projectileStreamID = 0;
 	}
 	return *this;
 }
@@ -415,7 +416,10 @@ bool Weapon::privateFireWeapon(WeaponHost &host, WeaponDeliverer &out, const Fir
 	{
 		return false;
 	}
-	// 6: the projectile stream object is the host's
+	if (!t.m_projectileStreamName.empty()) // 6: RW 0x6CF012 -> 0x6CD1FD (the template's + 0x178), fork lane STREAM-1
+	{
+		m_projectileStreamID = host.projectileStream(t.m_projectileStreamName, m_ownerID, m_projectileStreamID);
+	}
 	const std::uint32_t now = host.currentFrame();
 	const float rof = host.rateOfFireAttributeProduct(); // 7
 	const unsigned delay = getDelayBetweenShots(t, bonus, rof, host.logicRandom()); // 8: drawn BEFORE the ammo test
@@ -1035,6 +1039,10 @@ void Weapon::crc(StateHasher &h) const
 	h.addU32(m_leechRangeDeadline);
 	h.addU32(m_linearTargetCursor);
 	h.addI32(m_preAttackJitter);
+	if (m_projectileStreamID != 0)
+	{
+		h.addU32(m_projectileStreamID); // fork lane STREAM-1: only once a stream object was made (a weapon without one hashes as before)
+	}
 }
 
 void FiringTracker::crc(StateHasher &h) const
@@ -1059,7 +1067,8 @@ void FiringTracker::crc(StateHasher &h) const
 // checked: the owner's ObjectWeapons made this weapon from the same set before it loads.
 void Weapon::xfer(Xfer &x)
 {
-	SnapshotXfer::version(x, 1, 1);
+	XferVersion v{ 1, 2 }; // 2: the projectile stream id (fork lane STREAM-1; retail's version 3 field + 0x5C); a version-1 save loads it as 0
+	x.xferVersion(v);
 	std::string name = (!x.isLoading() && m_template) ? m_template->getName() : std::string();
 	x.xferAsciiString(&name);
 	if (x.isLoading() && name != (m_template ? m_template->getName() : std::string()))
@@ -1095,6 +1104,14 @@ void Weapon::xfer(Xfer &x)
 	x.xferUnsignedInt(&m_leechRangeDeadline);
 	x.xferUnsignedInt(&m_linearTargetCursor);
 	x.xferInt(&m_preAttackJitter);
+	if (v.current >= 2)
+	{
+		x.xferUnsignedInt(&m_projectileStreamID);
+	}
+	else
+	{
+		m_projectileStreamID = 0;
+	}
 }
 
 // retail FiringTracker is a helper module (FiringTrackerHelper, RW 0x8E2EB2); this one is ObjectWeapons' member: native layout, the crc's fields

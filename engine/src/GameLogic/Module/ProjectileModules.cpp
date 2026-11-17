@@ -1151,7 +1151,7 @@ std::vector<std::string> ProjectileModules::stops()
 		"[S-360] projectile launch: RW 0x6CB490 -> 0x6CAB85 is ported (lane RENDER-2): the launch bone of the launcher's drawable (RW 0x6756A1 -> 0x4C34A2, a pristine pose of the "
 		"model condition state's data, never the shown animation frame, computed from logic state and template data without a drawable) composed with the launcher's transform (RW 0x70BCE7); "
 		"without a ProjectileLaunchOffsets provider the bone is the identity, counted as `launches without bones` (a GameLogic run without the W3D assets has no provider: stop S-460); the garrison branch (status INSIDE_GARRISON: the container's drawable and transform) and the turret composition (no AI turrets) are not ported; a ProjectileNugget "
-		"with ProjectileFilterInContainer, WeaponLaunchBoneSlotOverride beyond the slot and ProjectileStreamName (RW 0x74094C / 0x7408A8) are not ported",
+		"with ProjectileFilterInContainer and WeaponLaunchBoneSlotOverride beyond the slot are not ported (the weapon's ProjectileStreamName is, fork lane STREAM-1: RW 0x6CD1FD, 0x74094C / 0x7408A8)",
 		"[S-361] flight path numerics: BezierSegment, BezFwdIterator and the length approximation follow RW 0x960E8D .. 0x9612A3 / 0x9D6A35 operation by operation; D3DXVec4Transform is an import of the D3DX DLL "
 		"(not in game.dat), evaluated left to right as float32 products and sums",
 		"[S-362] aim and terrain: the aim point of a victim is its geometry centre (RW 0x6CB85A -> 0x690BD2 -> 0xAD30E0 picks aim points of the victim's geometry by a seed; the weapon's aim bone is a "
