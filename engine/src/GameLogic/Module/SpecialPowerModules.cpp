@@ -46,6 +46,9 @@
 #include "GameLogic/Object/PartitionManager.h"
 #include "GameLogic/SimMath.h"
 #include "GameLogic/ObjectCreationList.h"
+#include "GameLogic/AI/AIPathfind.h"
+#include "GameLogic/AI/AIWorld.h"
+#include "GameLogic/BeaconCommands.h"
 #include "Common/Player.h"
 #include "Common/PlayerList.h"
 #include "Common/Science.h"
@@ -1146,6 +1149,121 @@ const ObjectCreationList *OCLSpecialPower::pickOCL() const
 	return TheObjectCreationListStore ? TheObjectCreationListStore->findObjectCreationList(oclName) : nullptr;
 }
 
+namespace
+{
+// RW 0x6E88B1: a cell the edge spawn may use: no cell (off the grid) is one; a cell impassable to players (+ 0xC bit 18) or of type 1 / 2 / 4 / 5 (WATER,
+// CLIFF, OBSTACLE, BRIDGE_IMPASSABLE) is not
+bool validSpawnCell(Pathfinder &pf, int x, int y)
+{
+	const PathfindCell *c = pf.getCell(LAYER_GROUND, x, y); // RW 0x5E2E9C(1, x, y)
+	if (!c)
+	{
+		return true;
+	}
+	if (c->getImpassableToPlayers())
+	{
+		return false;
+	}
+	const PathfindCell::CellType t = c->getType();
+	return !(t == PathfindCell::CELL_CLIFF || t == PathfindCell::CELL_BRIDGE_IMPASSABLE || t == PathfindCell::CELL_OBSTACLE || t == PathfindCell::CELL_WATER);
+}
+
+// RW 0x6EC56B (cell, budget, out, the cell test RW 0x6E88B1): the cell itself when it passes; else rings of growing size around it (each ring: `side` steps
+// +x, `side` steps +y, `side` + 1 steps -x, `side` + 1 steps -y, from where the last ring ended), a passing cell nearer (squared cell distance) than the best
+// of the ring so far becoming the best; a ring with a best ends the search. The budget drops by 2 + the ring counter (4, 12, 20 ...) before each ring and
+// the search stops once it is not over 0
+bool spiralToValidCell(Pathfinder &pf, const ICoord2D &cell, int budget, ICoord2D &out)
+{
+	if (validSpawnCell(pf, cell.x, cell.y))
+	{
+		out = cell;
+		return true;
+	}
+	int best = 0, side = 1, dx = 0, dy = 0, count = 4;
+	auto test = [&]() {
+		const int dist = dy * dy + dx * dx;
+		if ((best == 0 || dist < best) && validSpawnCell(pf, cell.x + dx, cell.y + dy))
+		{
+			best = dist;
+			out.x = cell.x + dx;
+			out.y = cell.y + dy;
+		}
+	};
+	while (budget > 0)
+	{
+		budget += -2 - count;
+		for (int n = side; n; --n)
+		{
+			++dx;
+			test();
+		}
+		for (int n = side; n; --n)
+		{
+			++dy;
+			test();
+		}
+		for (int n = side + 1; n; --n)
+		{
+			--dx;
+			test();
+		}
+		for (int n = side + 1; n; --n)
+		{
+			--dy;
+			test();
+		}
+		if (best != 0)
+		{
+			return true;
+		}
+		side += 2;
+		count += 8;
+	}
+	return false;
+}
+
+// RW 0x6EF173 Pathfinder::adjustToNearestValidCell (the BFME2 decomp's name, OCLSpecialPower.cpp): the position's cell (RW 0x6E8DD5, centred; off the extent:
+// nothing), the spiral (RW 0x6EC56B with GameData MaxCellsAdjustToNearestValidCell, GlobalData + 0x1208); found: the cell's corner + 1 in x and y (cvtsi2ss of
+// the cell * 10, addss 1.0, RW 0xBD1908) at the ground height there (TerrainLogic slot 0x1C, the ground layer)
+bool adjustToNearestValidCell(GameLogic &logic, Coord3D &pos)
+{
+	AIWorld *ai = logic.aiWorld();
+	if (!ai)
+	{
+		throw std::logic_error("OCLSpecialPower: no AI world for Pathfinder::adjustToNearestValidCell (RW 0x6EF173)");
+	}
+	Pathfinder &pf = ai->pathfinder();
+	const ICoord2D cell = Pathfinder::worldToCellUnclamped(&pos, true);
+	if (!pf.getCell(LAYER_GROUND, cell.x, cell.y)) // RW 0x6E8DD5: -1 outside the extent, then jl
+	{
+		return false;
+	}
+	ICoord2D found{ 0, 0 };
+	if (!spiralToValidCell(pf, cell, (int)logic.settings().maxCellsAdjustToNearestValidCell, found))
+	{
+		return false;
+	}
+	pos.x = SimMath::addf32(SimMath::sseFromInt32(found.x * 10), 1.0f);
+	pos.y = SimMath::addf32(SimMath::sseFromInt32(found.y * 10), 1.0f);
+	pos.z = logic.getGroundHeight(pos.x, pos.y);
+	return true;
+}
+} // namespace
+
+// RW 0x8C769B .. 0x8C76A0 with a secondary position (fork STRAFE-1: the edge spawns): RW 0x5F00CA(ocl, object, where, secondary, 0)
+void OCLSpecialPower::createOCLWithSecondary(const ObjectCreationList *ocl, const Coord3D &where, const Coord3D &secondary)
+{
+	if (!ocl)
+	{
+		return;
+	}
+	Object *obj = getObject();
+	for (Object *o : ocl->create(obj->logic(), obj, where, &secondary, 0))
+	{
+		m_created.push_back(o->getID());
+	}
+}
+
 void OCLSpecialPower::createOCL(const ObjectCreationList *ocl, const Coord3D &where, bool hasSecondary)
 {
 	if (!ocl)
@@ -1220,17 +1338,33 @@ void OCLSpecialPower::doSpecialPowerAtLocation(const Coord3D &loc, unsigned opti
 		m_secondaryUsed = best ? best->getID() : (ObjectID)INVALID_ID;
 		break;
 	}
-	default: // 0, 1, 2, 6: the map edge points (TerrainLogic vslots 0x34 / 0x38, RW 0x6EF173); 7: the army spawn waypoints. Not ported (S-530)
-		++m_unported;
-		if (m_data->m_createLocation == 2)
+	case 0: // CREATE_AT_EDGE_NEAR_SOURCE (RW 0x8C762A): the edge point nearest the object, the target as the secondary position
+	case 1: // CREATE_AT_EDGE_NEAR_TARGET (RW 0x8C7661): the edge point nearest the target, no secondary position
+	case 2: // CREATE_AT_EDGE_NEAR_TARGET_AND_MOVE_TO_LOCATION (RW 0x8C7727, fork STRAFE-1: the spell book's Dragon Strike): as 1, the target as the secondary
+	{
+		// TerrainLogic vslot 0x34 (RW 0x67D949), then Pathfinder::adjustToNearestValidCell (RW 0x6EF173: its result is not read, a position it cannot move
+		// stays the edge point), then RW 0x5F00CA
+		Coord3D at;
+		if (!BeaconCommands::closestEdgePoint(obj->logic(), m_data->m_createLocation == 0 ? *obj->getPosition() : loc, at))
 		{
-			// lane SPELL-3 (stop S-931): CREATE_AT_EDGE_NEAR_TARGET_AND_MOVE_TO_LOCATION (RW 0x8C7727: the edge point nearest the target, TerrainLogic vslot 0x34,
-			// adjusted by the pathfinder RW 0x6EF173; the OCL made there with the target as its secondary position, RW 0x5F00CA) is the spell book's Dragon Strike:
-			// its dragon's flight needs the OCL's IssueMoveAfterCreation / MoveUsesStrafeUpdate (RW 0x5F27F1 .. 0x5F28C3), StrafeAreaUpdate (RW 0x7A82AF / 0x7A8368)
-			// and GiantBirdAIUpdate's aircraft interface (AIUpdateInterface vslots 0x188 / 0x1B8 / 0x238), none of them ported
-			obj->logic().noteStop("[S-931] OCLSpecialPower CREATE_AT_EDGE_NEAR_TARGET_AND_MOVE_TO_LOCATION (Dragon Strike): the edge spawn, the OCL's strafe move, "
-								  "StrafeAreaUpdate and GiantBirdAIUpdate's aircraft interface are not ported: nothing is made");
+			// a logic without a map terrain (test worlds): retail always has one
+			++m_unported;
+			obj->logic().noteStop("[S-931] OCLSpecialPower CREATE_AT_EDGE_*: no map terrain for the closest edge point (TerrainLogic vslot 0x34): nothing is made");
+			break;
 		}
+		adjustToNearestValidCell(obj->logic(), at);
+		if (m_data->m_createLocation == 1)
+		{
+			createOCL(ocl, at, false);
+		}
+		else
+		{
+			createOCLWithSecondary(ocl, at, loc);
+		}
+		break;
+	}
+	default: // 6: the farthest map edge point (TerrainLogic vslot 0x38, RW 0x8C773C); 7: the army spawn waypoints. Not ported (S-530)
+		++m_unported;
 		break;
 	}
 	SpecialPowerModules::grantPlayerUpgrades(*obj, m_data->m_upgradeNames);

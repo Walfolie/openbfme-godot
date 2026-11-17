@@ -696,12 +696,12 @@ TEST_CASE("SPELLAUDIT-1 broken (pinned as it is today): Army of the Dead's six h
 	CHECK(c.made("RohanOathbreaker").size() == 0u); // BROKEN: retail 96 (OATHBREAKER_SMALL_HORDE_SIZE 16 x 6); AODHordeContain is not bound
 }
 
-TEST_CASE("SPELLAUDIT-1 broken (pinned as it is today): Dragon Strike makes no dragon; retail's comes in from the map edge (OCL_SpellBookDragonStrike, S-931)")
+TEST_CASE("SPELLAUDIT-1: Dragon Strike in this world without a map terrain makes no dragon (S-931: no edge point); on a map it comes in from the edge (strafe1 retail, fly1 suite)")
 {
 	OPENBFME_REQUIRE_START(shared);
 	auto ctx = shared->world->enterContext();
 	OneCast c(*shared, 3, "SpellBookDragonStrike", 10);
-	CHECK(c.made("SpellBookDragonStrikeDragon").size() == 0u); // BROKEN: retail 1 (CREATE_AT_EDGE_NEAR_TARGET_AND_MOVE_TO_LOCATION, S-931)
+	CHECK(c.made("SpellBookDragonStrikeDragon").size() == 0u); // the fixture has no TerrainLogic: CREATE_AT_EDGE_NEAR_TARGET_AND_MOVE_TO_LOCATION finds no edge point (S-931); fork STRAFE-1 ported the run
 }
 
 TEST_CASE("SPELLFIX-1 retail: a vision ping without ShroudClearingRange clears its VisionRange (RW 0x73FB7A default -1, RW 0x69990F)")

@@ -475,7 +475,7 @@ TEST_CASE("SPELL-2 retail: every faction buys and casts its spell book powers; t
 		cls << c.first << " " << c.second << ", ";
 	}
 	MESSAGE("SPELL-2: powers checked (tier 1 / 2 / 4 summons): " << checked << "; tier-4 summons with an effect: " << tier4Summons << "; casts stopped at S-530: " << stopped << "; classes: " << cls.str());
-	CHECK(stopped == 1); // SpellBookDragonStrike (CREATE_AT_EDGE_NEAR_TARGET_AND_MOVE_TO_LOCATION)
+	CHECK(stopped == 1); // SpellBookDragonStrike (CREATE_AT_EDGE_NEAR_TARGET_AND_MOVE_TO_LOCATION: this fixture has no map terrain for the edge point, S-931)
 	CHECK(tier4Summons >= 7);
 	CHECK(g.spell.malformed() == 0u);
 }

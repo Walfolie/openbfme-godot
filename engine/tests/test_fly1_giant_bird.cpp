@@ -33,6 +33,7 @@
 #include "GameLogic/Combat/CombatState.h"
 #include "GameLogic/Module/GiantBirdAIUpdate.h"
 #include "GameLogic/Module/SpawnBehavior.h"
+#include "GameLogic/Module/StrafeAreaUpdate.h"
 #include "GameLogic/NewGame/NewGame.h"
 #include "GameLogic/Object/Object.h"
 #include "Libraries/WWVegas/WW3D2/assetmgr.h"
@@ -987,4 +988,75 @@ TEST_CASE("stealthfly1 retail: AI command 0x39 (the scripts' attack of a giant b
 	REQUIRE(ai->currentStateId() == (unsigned)GiantBirdAIUpdate::STATE_FOLLOW_PATH);
 	CHECK(ai->stateMachine().goalPath().back().x == queued.x);
 	CHECK(ai->stateMachine().goalPath().back().y == queued.y);
+}
+
+TEST_CASE("strafe1 retail: Dragon Strike: the dragon comes in from the map edge nearest the target (OCLSpecialPower 2), strafes the target, burns the "
+		  "enemy horde there, flies off to the edge and fades (StrafeAreaUpdate RW 0x7A82AF / 0x7A8368)")
+{
+	OPENBFME_REQUIRE_START(s);
+	FlyArena arena(*s, "FactionMordor", "FactionMen");
+	arena.clearCreeps();
+	GameLogic &logic = arena.logic();
+	const SpecialPowerTemplate *strike = TheSpecialPowerStore->findSpecialPowerTemplate("SpellBookDragonStrike");
+	REQUIRE(strike);
+	Object *book = SpecialPowerModules::findSpellBookObject(logic, *arena.a);
+	REQUIRE(book);
+	SpecialPowerModuleInterface *power = SpecialPowerModules::findModule(*book, strike);
+	REQUIRE(power);
+	const Coord3D target{ 1800.0f, 1200.0f, logic.getGroundHeight(1800.0f, 1200.0f) };
+	Object *horde = arena.make("GondorFighterHorde", arena.b, target.x, target.y);
+	arena.step(2);
+	auto health = [](const Object *o) {
+		float h = 0.0f;
+		if (const ContainModuleInterface *c = o->getContain())
+		{
+			for (const Object *m : *c->getContainedItemsList())
+			{
+				h += m->isEffectivelyDead() ? 0.0f : m->getBodyModule()->getHealth();
+			}
+		}
+		return h;
+	};
+	const float before = health(horde);
+	const ObjectID hordeId = horde->getID();
+	power->doSpecialPowerAtLocation(target, 0);
+	Object *dragon = nullptr;
+	for (Object *o = logic.getFirstObject(); o; o = o->getNextObject())
+	{
+		dragon = o->getTemplate()->getName() == "SpellBookDragonStrikeDragon" ? o : dragon;
+	}
+	REQUIRE_MESSAGE(dragon, "OCL_SpellBookDragonStrike makes its dragon");
+	const ObjectID dragonId = dragon->getID();
+	StrafeAreaUpdate *strafe = dynamic_cast<StrafeAreaUpdate *>(dragon->findModule("StrafeAreaUpdate"));
+	REQUIRE(strafe);
+	CHECK(strafe->target().x == target.x); // the OCL's secondary position, the cast location
+	CHECK(strafe->target().y == target.y);
+	CHECK(strafe->state() == 0);
+	const Coord3D spawn = *dragon->getPosition();
+	MESSAGE("dragon made at " << spawn.x << "," << spawn.y << "," << spawn.z);
+	// the closest edge to (1800, 1200) is y = 0; its cell (180, 0) passes the cell test, so the dragon stands at the cell's corner + 1 (RW 0x6EF1C3)
+	CHECK(spawn.x == 1801.0f);
+	CHECK(spawn.y == 1.0f);
+	int strafeFrame = -1, exitFrame = -1, goneFrame = -1;
+	for (int f = 0; f < 1500 && goneFrame < 0; ++f)
+	{
+		arena.step();
+		Object *d = logic.findObjectByID(dragonId);
+		if (!d || d->isEffectivelyDead())
+		{
+			goneFrame = f;
+			break;
+		}
+		strafeFrame = strafeFrame < 0 && strafe->state() == 1 ? f : strafeFrame;
+		exitFrame = exitFrame < 0 && strafe->state() == 2 ? f : exitFrame;
+	}
+	const Object *hordeNow = logic.findObjectByID(hordeId);
+	const float after = hordeNow ? health(hordeNow) : 0.0f;
+	MESSAGE("strafe from frame " << strafeFrame << ", exit " << exitFrame << ", gone " << goneFrame << "; horde health " << before << " -> " << after);
+	// measured on this tree (engine pins, not retail values): the approach, the strafe from Radius + Slope, the exit once idle within Radius / 12, the fade
+	CHECK(strafeFrame == 60);
+	CHECK(exitFrame == 99);
+	CHECK(goneFrame == 157);
+	CHECK(before == 3000.0f);
+	CHECK(after == 0.0f); // DragonStrikeStrafeWeapon (3000 FLAME at 25%) burns the whole horde
 }

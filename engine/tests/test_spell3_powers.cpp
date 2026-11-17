@@ -645,7 +645,7 @@ TEST_CASE("SPELL-3 retail: area damage: Earthquake makes its six ground pieces, 
 	CHECK(after < before);
 }
 
-TEST_CASE("SPELL-3 retail: Dragon Strike (S-931): the map-edge strafe run is not ported; the cast takes its recharge, makes nothing and notes the stop")
+TEST_CASE("SPELL-3 retail: Dragon Strike (S-931) in a world without a map terrain: no edge point, so the cast takes its recharge, makes nothing and notes the stop (the run itself: strafe1 retail in the fly1 suite)")
 {
 	OPENBFME_REQUIRE_START(shared);
 	auto ctx = shared->world->enterContext();

@@ -295,6 +295,9 @@ struct GameLogicSettings
 	std::shared_ptr<const ObjectFilter> victoryStructureFilter;
 	std::shared_ptr<const ObjectFilter> victoryUnitFilter;
 	float secondsBeforeBaseCheckActive = 5.0f;
+	// fork STRAFE-1 (GameData MaxCellsAdjustToNearestValidCell, RW GlobalData + 0x1208, parseUnsignedInt RW 0x42ECB2; the constructor 400, RW 0x643A13): the
+	// search budget of Pathfinder::adjustToNearestValidCell (RW 0x6EF173 -> RW 0x6EC56B)
+	unsigned maxCellsAdjustToNearestValidCell = 400;
 	// lane END-1 (GameData, RW GlobalData + 0x1168 .. + 0x11B8, rows RW 0xC00F00 .. 0xC01040, parseReal RW 0x42ED00 / ObjectFilter RW 0x76392F): the ScoreKeeper's
 	// object filter (ObjectsThatScore) and multipliers; the GlobalData constructor zeroes the twenty floats (RW 0x643D3C rep stosd), so a GameData without them
 	// starts every multiplier at 1.0 (RW 0x643D31 / 0x643D42: `rep stosd` of 1.0f over the twenty floats) and PlayerEliminatedMultiplier at 0.1 (RW 0x643D24 loads

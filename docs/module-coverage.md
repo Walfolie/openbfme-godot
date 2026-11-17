@@ -336,7 +336,7 @@ The live report's `unported_modules` (objects alive at the end of the run) of ei
 | 237 | ShareExperienceBehavior | Behavior | 1 | 1 | ported |
 | 238 | SpellRechargeModifierUpgrade | Behavior | 1 | 1 | ported |
 | 239 | SplitHordeSpecialPower | Behavior | 1 | 1 | missing |
-| 240 | StrafeAreaUpdate | Behavior | 1 | 1 | missing |
+| 240 | StrafeAreaUpdate | Behavior | 1 | 1 | ported |
 | 241 | SummonReplacementSpecialAbilityUpdate | Behavior | 1 | 4 | missing |
 | 242 | TemporarilyDefectUpdate | Behavior | 1 | 1 | ported |
 | 243 | W3DDebrisDraw | Draw | 1 | 1 | missing |

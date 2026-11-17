@@ -30,6 +30,7 @@
 #include "GameLogic/Module/BehaviorModule.h"
 #include "GameLogic/Module/PhysicsBehavior.h"
 #include "GameLogic/Module/SlavedUpdate.h"
+#include "GameLogic/Module/StrafeAreaUpdate.h"
 #include "GameLogic/Module/StructureModules.h"
 #include "GameLogic/Object/ExperienceTracker.h"
 #include "GameLogic/Object/Object.h"
@@ -823,7 +824,13 @@ std::vector<Object *> ObjectCreationList::createObjectNugget(GameLogic &logic, c
 			}
 			if (n.moveUsesStrafeUpdate)
 			{
-				unported(logic, m_unportedUses, "MoveUsesStrafeUpdate (RW 0x7A82AF)");
+				// RW 0x5F282F .. 0x5F2883: the object's StrafeAreaUpdate (findModule RW 0x68BDA5 of its name key) starts the strafe from `where` to the
+				// secondary position (RW 0x7A82AF, fork STRAFE-1); when it does, the OCL issues no move of its own
+				StrafeAreaUpdate *strafe = dynamic_cast<StrafeAreaUpdate *>(o->findModule("StrafeAreaUpdate"));
+				if (strafe && strafe->startStrafe(where, *secondary))
+				{
+					continue;
+				}
 			}
 			ai->aiMoveToPosition(*secondary, CMD_FROM_PLAYER); // RW 0x5F28A7: AI command 0 from source 0 (RW 0x7536DD(0, 0)) through the AI's vslot 0x20
 		}

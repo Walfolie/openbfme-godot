@@ -259,6 +259,7 @@ const FieldParse kGameDataFields[] = {
 	{ "VictoryConditionStructureObjectFilter", parseNoting<parseFilterPtr>, SEEN_DATA(SEEN_VSTRUCT), (int)offsetof(BlockState, values.victoryStructureFilter) },
 	{ "VictoryConditionUnitObjectFilter", parseNoting<parseFilterPtr>, SEEN_DATA(SEEN_VUNIT), (int)offsetof(BlockState, values.victoryUnitFilter) },
 	{ "SecondsBeforeBaseCheckActive", parseNoting<INI::parseReal>, 0, (int)offsetof(BlockState, values.secondsBeforeBaseCheckActive) },
+	{ "MaxCellsAdjustToNearestValidCell", INI::parseUnsignedInt, nullptr, (int)offsetof(BlockState, values.maxCellsAdjustToNearestValidCell) }, // RW 0xC01160, fork STRAFE-1
 	// lane END-1: ObjectsThatScore (row RW 0xC00F00, + 0x1168) and the ScoreKeeper multipliers (rows RW 0xC00F10 .. 0xC01040 in this order, all parseReal RW 0x42ED00)
 	{ "ObjectsThatScore", parseFilterPtr, nullptr, (int)offsetof(BlockState, values.objectsThatScore) },
 	{ "ScoreKeeper_UnitsBuiltMultiplier", INI::parseReal, nullptr, (int)offsetof(BlockState, values.score.unitsBuilt) }, // + 0x116C
