@@ -944,7 +944,9 @@ TEST_CASE("skirmish ai vs ai: Evendim, 30 game-minutes: every pairing ends - Mor
 	// defeat at 2667 (3121); seed 1234 stays open at 9000. Engine pins, not retail values.
 	// pin: fork lane COLLIDE-1 (TheCollisionManager replaces the partition collision pass; measured once on the lane's tree, Windows MSVC; with the manager switched off the previous value held): seed 2 stays open at 9000 (Mordor's defeat at 4297 before) with a new table from the first window on, seed 7 ends with
 	// Mordor's defeat at 4745 (2667), seed 1234 with Mordor's defeat (start position 1) at 8416 (open before). Engine pins, not retail values.
-	for (const Game &g : { Game{ "FactionMordor", "FactionMen", 2u, -1, -1 }, Game{ "FactionMen", "FactionMordor", 7u, 1, 4745 }, Game{ "FactionMordor", "FactionMen", 1234u, 1, 8416 } })
+	// fork lane HORDEDMG-1 (HordeTransportContainDamage: a hurt mumak loses its archers; measured once on the lane's tree, Windows MSVC): seeds 2 and 7
+	// keep their games, seed 1234 ends with Mordor's defeat at 8539 (8416). Engine pins, not retail values.
+	for (const Game &g : { Game{ "FactionMordor", "FactionMen", 2u, -1, -1 }, Game{ "FactionMen", "FactionMordor", 7u, 1, 4745 }, Game{ "FactionMordor", "FactionMen", 1234u, 1, 8539 } })
 	{
 		INFO(g.a << " vs " << g.b << " seed " << g.seed);
 		VersusRun run;

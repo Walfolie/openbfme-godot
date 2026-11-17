@@ -28,6 +28,7 @@ list(APPEND OPENBFME_SIM_SOURCES
     src/GameLogic/Object/Contain/AODHordeContain.cpp # fork AOD-1
     src/GameLogic/Module/CastleModules2.cpp # fork CASTLEMOD-1
     src/GameLogic/Module/RunOffMapBehavior.cpp # fork RUNOFF-1
+    src/GameLogic/Module/HordeTransportContainDamage.cpp # fork HORDEDMG-1
     src/GameLogic/FireLogicSystem.cpp # fork FIRELOGIC-1: TheFireLogicSystem (the terrain fire grid)
     src/GameLogic/Object/CollisionManager.cpp # fork COLLIDE-1: TheCollisionManager's library
     src/GameLogic/Object/ObjectCollision.cpp # fork COLLIDE-1: an Object's collidable

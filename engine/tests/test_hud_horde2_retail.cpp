@@ -992,7 +992,10 @@ TEST_CASE("backlog8 retail: the FLOATING_Z horde members of the retail data: the
 	CHECK(archers->getTemplate()->getName() == "MordorHaradrimArcherHordeOnMumakil");
 	HordeContain *hc = hordeContainOf(archers);
 	REQUIRE(hc != nullptr);
-	REQUIRE(a.memberIds(archers).size() == 6);
+	// fork lane HORDEDMG-1: the mumak fights the Oathbreakers for the 60 frames and HordeTransportContainDamage (RW 0x8BF2BF) kills archers in step with
+	// its health; at least one stays while it lives
+	REQUIRE(!a.memberIds(archers).empty());
+	REQUIRE(a.memberIds(archers).size() <= 6u); // tolerance: how many archers die depends on the fight's damage, not on the FLOATING_Z rule checked here
 	for (ObjectID id : a.memberIds(archers))
 	{
 		const Object *m = a.logic.findObjectByID(id);

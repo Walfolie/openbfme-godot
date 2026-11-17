@@ -192,7 +192,13 @@ TEST_CASE("transport retail: the mumak's archers shoot an enemy horde from its b
 	const float after = orcs && !orcs->isDestroyed() ? healthOfMembers(*orcs) : 0.0f;
 	std::printf("  info: Gondor fighters beside the mumak: health %.0f -> %.0f\n", before, after);
 	CHECK(after < before);
-	// the mumak dies: EjectPassengersOnDeath (Yes) throws every member off its bone and kills it
+	// the mumak dies: EjectPassengersOnDeath (Yes) throws every member still aboard off its bone and kills it. The killing hit reaches
+	// HordeTransportContainDamage first (fork HORDEDMG-1, RW 0x8BF2BF): at health 0 it leaves one archer (min(0 + 1, slots)), so one is thrown
+	size_t aboard = 0;
+	for (Object *m : ridersOf(*horde))
+	{
+		aboard += m->isEffectivelyDead() ? 0u : 1u;
+	}
 	r.logic().random().clearCallLog();
 	r.logic().random().enableCallLog(true);
 	kill(*mumak);
@@ -209,9 +215,10 @@ TEST_CASE("transport retail: the mumak's archers shoot an enemy horde from its b
 		Object *m = r.logic().findObjectByID(id);
 		dead += (!m || m->isEffectivelyDead()) ? 1u : 0u;
 	}
-	std::printf("  info: the mumak died: %zu of %zu riders dead, %zu fling draws (5, 10)\n", dead, members.size(), draws);
+	std::printf("  info: the mumak died: %zu of %zu riders dead, %zu aboard before the hit, %zu fling draws (5, 10)\n", dead, members.size(), aboard, draws);
 	CHECK(dead == members.size());
-	CHECK(draws == members.size()); // every member has a PhysicsBehavior
+	CHECK(draws == 1u); // the one archer left aboard (every member has a PhysicsBehavior)
+	CHECK(aboard == 6u); // the fighters did not hurt the mumak in the 150 frames: all six were aboard
 }
 
 TEST_CASE("transport retail: the Dwarven battle wagon: an upgrade makes its passengers (UpgradeCreationTrigger RW 0x86B169), LOADED, and its death kills them")
@@ -526,4 +533,65 @@ TEST_CASE("idle1 retail: a battering ram's crew does not acquire targets from it
 	CHECK_FALSE(se->crewList()->front()->getAIUpdateInterface()->combatSettings().canAttackWhileContained);
 	Object *archers = r.make("MordorArcherHorde", c0.x - 300.0f, c0.y, computer);
 	CHECK(archers->getAIUpdateInterface()->combatSettings().canAttackWhileContained);
+}
+
+namespace
+{
+// fork HORDEDMG-1: a real hit (DAMAGE_UNRESISTABLE) down to `ratio` of the maximum health, so the damage modules see it
+void woundTo(Object &o, float ratio)
+{
+	BodyModuleInterface *body = o.getBodyModule();
+	REQUIRE(body);
+	DamageInfo hit;
+	hit.m_input.m_damageType = DAMAGE_UNRESISTABLE;
+	hit.m_input.m_amount = body->getHealth() - body->getMaxHealth() * ratio;
+	o.attemptDamage(hit);
+}
+
+size_t livingMembers(Object &horde)
+{
+	size_t n = 0;
+	for (Object *m : ridersOf(horde))
+	{
+		n += m->isEffectivelyDead() ? 0u : 1u;
+	}
+	return n;
+}
+} // namespace
+
+TEST_CASE("transport retail (HORDEDMG-1): a hurt mumak loses archers in step with its health (HordeTransportContainDamage, RW 0x8BF2BF)")
+{
+	if (!haveWorld("transport retail"))
+	{
+		return;
+	}
+	SharedWorld &s = shared();
+	Rig r(s);
+	const Coord3D c0 = gridCentre(r, 200.0f);
+	Object *mumak = r.make("MordorMumakil", c0.x, c0.y);
+	r.frame(2);
+	REQUIRE(mumak->findModule("HordeTransportContainDamage") != nullptr);
+	REQUIRE(ridersOf(*mumak).size() == 1u);
+	Object *horde = ridersOf(*mumak).front();
+	HordeContainInterface *h = horde->getContain()->getHordeContainInterface();
+	REQUIRE(h != nullptr);
+	const unsigned slots = (unsigned)h->getSlotCapacity();
+	const size_t full = livingMembers(*horde);
+	REQUIRE(full == slots);
+	const float maxHealth = mumak->getBodyModule()->getMaxHealth();
+	// the members the health leaves: min(trunc(health * slots / max) + 1, slots); a hit from full health kills slots - that
+	auto expectedAfter = [&](float health) {
+		const unsigned a = (unsigned)(health * (float)slots / maxHealth) + 1u;
+		return a >= slots ? slots : a;
+	};
+	woundTo(*mumak, 0.45f); // off the member boundaries (the module rounds under x87 PC24)
+	const unsigned half = expectedAfter(mumak->getBodyModule()->getHealth());
+	CHECK(livingMembers(*horde) == half); // killed in the damage call itself
+	r.frame(1);
+	woundTo(*mumak, 0.12f);
+	const unsigned tenth = expectedAfter(mumak->getBodyModule()->getHealth());
+	CHECK(livingMembers(*horde) == tenth);
+	std::printf("  info: mumak max health %.0f, %u slots: %zu archers, at 45 %% health %u, at 12 %% %u\n", maxHealth, slots, full, half, tenth);
+	CHECK(half == 3u);  // 3600 of 8000: trunc(2.7) + 1
+	CHECK(tenth == 1u); // 960 of 8000: trunc(0.72) + 1; the last archer stays while the beast lives (n <= 1 is skipped)
 }

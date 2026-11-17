@@ -261,7 +261,7 @@ The live report's `unported_modules` (objects alive at the end of the run) of ei
 | 162 | FlingPassengerSpecialAbilityUpdate | Behavior | 5 | 3 | ported |
 | 163 | FreezingRainSpecialPower | Behavior | 5 | 1 | ported |
 | 164 | HordeDispatchSpecialPower | Behavior | 5 | 2 | ported |
-| 165 | HordeTransportContainDamage | Behavior | 5 | 1 | missing |
+| 165 | HordeTransportContainDamage | Behavior | 5 | 1 | ported |
 | 166 | PlayerUpgradeSpecialPower | Behavior | 5 | 1 | ported |
 | 167 | ProductionSpeedBonus | Behavior | 5 | 2 | ported |
 | 168 | ScavengerSpecialPower | Behavior | 5 | 1 | ported |

@@ -12,6 +12,7 @@
 #include "GameLogic/Module/DamageFieldUpdate.h"
 #include "GameLogic/Module/CastleModules2.h"
 #include "GameLogic/Module/RunOffMapBehavior.h"
+#include "GameLogic/Module/HordeTransportContainDamage.h"
 #include "GameLogic/Module/OathbreakerModules.h"
 #include "GameLogic/Object/Contain/AODHordeContain.h"
 #include "GameLogic/Module/EvacuateDamage.h"
@@ -66,6 +67,7 @@ void ExtraModules::registerAll(ModuleFactory &modules)
 	AODHordeContain::registerModule(modules);               // fork AOD-1
 	CastleModules2::registerAll(modules);                  // fork CASTLEMOD-1
 	RunOffMapBehavior::registerModule(modules);             // fork RUNOFF-1
+	HordeTransportContainDamage::registerModule(modules);   // fork HORDEDMG-1
 	CommandButtonHuntUpdate::registerModule(modules);       // lane MODCOMPAT-MOD1
 	CritterEmitterUpdate::registerModule(modules); // lane MODCOMPAT-MOD1
 	AudioLoopUpgrade::registerModule(modules);     // lane MODCOMPAT-MOD1
