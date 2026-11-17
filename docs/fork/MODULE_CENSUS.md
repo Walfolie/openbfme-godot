@@ -55,4 +55,4 @@ Packages (in this order; each package is ported, tested and committed together):
 
 Done before this census: fork lane AOD-1 (AODCrushCollide, OathbreakersFadeAwayBehavior, AODHordeContain).
 
-Done since: package A, fork lane CASTLEMOD-1: GateProxyBehavior, OCLUpdate, RubbleRiseUpdate, WallUpgradeUpdate (without its move-out routine RW 0x8AEC79, S-1423), ManTheWallsSpecialPower: package A is done. Package B, fork lane RUNOFF-1: RunOffMapBehavior with the AI commands 0x38 / 0x41 and their states 30 / 55; fork lane HORDEDMG-1: HordeTransportContainDamage (the mumak loses archers with its health).
+Done since: package A, fork lane CASTLEMOD-1: GateProxyBehavior, OCLUpdate, RubbleRiseUpdate, WallUpgradeUpdate (without its move-out routine RW 0x8AEC79, S-1423), ManTheWallsSpecialPower: package A is done. Package B, fork lane RUNOFF-1: RunOffMapBehavior with the AI commands 0x38 / 0x41 and their states 30 / 55; fork lane HORDEDMG-1: HordeTransportContainDamage (the mumak loses archers with its health); fork lane SHIPDEATH-1: ShipSlowDeathBehavior (a sinking ship keels over).

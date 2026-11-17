@@ -58,6 +58,7 @@ set(OPENBFME_MOD1_TESTS
     tests/test_aod_horde_retail.cpp # fork AOD-1: AODHordeContain (retail data)
     tests/test_castle_modules2.cpp # fork CASTLEMOD-1: GateProxyBehavior, OCLUpdate (synthetic data)
     tests/test_run_off_map.cpp # fork RUNOFF-1: RunOffMapBehavior, AI states 30 / 55 (synthetic data)
+    tests/test_ship_slow_death.cpp # fork SHIPDEATH-1: ShipSlowDeathBehavior (synthetic data)
     tests/test_firelogic.cpp # fork FIRELOGIC-1: TheFireLogicSystem (synthetic data)
     tests/test_collision_manager.cpp # fork COLLIDE-1: the collision manager library (synthetic boxes)
 )

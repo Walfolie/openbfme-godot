@@ -195,6 +195,10 @@ public:
 	bool hasLanded() const { return (m_flags & kLanded) != 0; }
 	bool fadeBegun() const { return m_fadeBegun; }
 
+protected:
+	// RW 0x860E93 (SlowDeathBehaviorInterface slot 0); fork SHIPDEATH-1: ShipSlowDeathBehavior overrides it (RW 0x861AA9)
+	virtual void beginSlowDeath(const DieModuleInterface::Event &event);
+
 private:
 	enum : unsigned
 	{
@@ -203,7 +207,6 @@ private:
 		kFlung = 4,     ///< bit 2: FlingForce threw the body (its timers wait while it flies)
 		kLanded = 8     ///< bit 3: the flung body is down
 	};
-	void beginSlowDeath(const DieModuleInterface::Event &event); // RW 0x860E93 (SlowDeathBehaviorInterface slot 0)
 	void doPhase(SlowDeathPhase phase);
 	float heightAboveTerrain() const;
 	const SlowDeathBehaviorModuleData *m_data;
@@ -254,4 +257,38 @@ public:
 
 private:
 	const ClearanceTestingSlowDeathBehaviorModuleData *m_clearanceData;
+};
+
+// fork SHIPDEATH-1 (package B of docs/fork/MODULE_CENSUS.md): ShipSlowDeathBehavior, the slow death of the ships (RotWK 2.01 data: the corsair, shore
+// bombard, transport and elven ships and their interfaces): a sinking ship keels over. A BFME class (ShipSlowDeathBehavior.cpp); ZH has none. Read from
+// RotWK's game.dat (caveat S-001):
+//   * registration RW 0x657F1A (create RW 0x64AFD9, 0x5C bytes; data RW 0x64B011, 0x190 bytes: SlowDeathBehaviorModuleData's, its field table followed by
+//     the empty RW 0xC84858); constructor RW 0x8619ED: SlowDeathBehavior's RW 0x8604E2, vtables RW 0xC58C14 / 0xC594D0 / 0xC58C08 / 0xC6066C /
+//     0xC58BF8, the three floats + 0x50 / + 0x54 / + 0x58 zero.
+//   * beginSlowDeath RW 0x861AA9: SlowDeathBehavior's (RW 0x860E93), then both rates are pi / DestructionDelay * 0.5 (the data's + 0x4C, fild unsigned
+//     and fstp dword; SSE divss / mulss: a quarter turn, pi / 2, over the destruction delay's updates), + 0x58 is 0; each is negated when GameLogicRandomValue(0, 1) is 1
+//     (ShipSlowDeathBehavior.cpp lines 0x40 then 0x46).
+//   * update RW 0x861B45: SlowDeathBehavior's (RW 0x860B39, its sleep time is returned), then the object's transform is turned by + 0x50 about its rows
+//     1 / 2 (row1' = c row1 - s row2, row2' = s row1 + c row2) and then by + 0x54 about its rows 0 / 2 (row0' = c row0 + s row2, row2' = c row2 - s row0),
+//     the translation kept, and set (Thing::setTransformMatrix RW 0x70BA76). c = the CRT cos (RW 0xA3CF84) stored as float, s the CRT sin (RW 0xA3CF90)
+//     stored as float for the SSE products (column 0 and the second row of each pair) while the x87 products of the other entries use the sin still wide
+//     in ST0 (precision control 24).
+//   * xfer RW 0x861D51: SlowDeathBehavior's (RW 0x8603F9) and nothing of its own: the rates are not saved, so a loaded sinking ship stops keeling over
+//     (retail's behaviour, kept).
+class ShipSlowDeathBehavior : public SlowDeathBehavior
+{
+public:
+	OBFME_MODULE_XFER(ShipSlowDeathBehavior)
+	ShipSlowDeathBehavior(Thing *thing, const SlowDeathBehaviorModuleData *data) : SlowDeathBehavior(thing, data) {} // RW 0x8619ED
+	UpdateSleepTime update() override; // RW 0x861B45
+	void crc(StateHasher &hasher) const override;
+	float rollRate() const { return m_rollRate; }
+	float pitchRate() const { return m_pitchRate; }
+
+protected:
+	void beginSlowDeath(const DieModuleInterface::Event &event) override; // RW 0x861AA9
+
+private:
+	float m_rollRate = 0.0f;  ///< + 0x50: radians per update, about the rows 1 / 2
+	float m_pitchRate = 0.0f; ///< + 0x54: radians per update, about the rows 0 / 2
 };

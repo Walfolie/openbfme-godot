@@ -222,7 +222,7 @@ The live report's `unported_modules` (objects alive at the end of the run) of ei
 | 123 | AudioLoopUpgrade | Behavior | 13 | 29 | missing |
 | 124 | DozerAIUpdate | Behavior | 13 | 8 | ported |
 | 125 | HordeTransportContain | Behavior | 13 | 8 | ported |
-| 126 | ShipSlowDeathBehavior | Behavior | 12 | 10 | missing |
+| 126 | ShipSlowDeathBehavior | Behavior | 12 | 10 | ported |
 | 127 | W3DSailModelDraw | Draw | 12 | 11 | ported |
 | 128 | BloodthirstyUpdate | Behavior | 11 | 5 | missing |
 | 129 | CastleUpgrade | Behavior | 11 | 24 | ported |

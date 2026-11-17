@@ -290,6 +290,8 @@ void CombatModules::registerAll(ModuleFactory &modules)
 	bindRuntime<SlowDeathBehavior, SlowDeathBehaviorModuleData>(modules, "SlowDeathBehavior");
 	modules.bindTypedData<ClearanceTestingSlowDeathBehaviorModuleData>("ClearanceTestingSlowDeathBehavior", MODULETYPE_BEHAVIOR); // lane SIEGEFALL-1
 	bindRuntime<ClearanceTestingSlowDeathBehavior, ClearanceTestingSlowDeathBehaviorModuleData>(modules, "ClearanceTestingSlowDeathBehavior");
+	modules.bindTypedData<SlowDeathBehaviorModuleData>("ShipSlowDeathBehavior", MODULETYPE_BEHAVIOR); // fork SHIPDEATH-1: RW 0x64B011 (no field of its own)
+	bindRuntime<ShipSlowDeathBehavior, SlowDeathBehaviorModuleData>(modules, "ShipSlowDeathBehavior");
 }
 
 // ---- DestroyDie / FXListDie -------------------------------------------------------------------------------------------------------
@@ -845,6 +847,86 @@ bool ClearanceTestingSlowDeathBehavior::canBeginSlowDeath()
 }
 
 void ClearanceTestingSlowDeathBehavior::xfer(Xfer &x)
+{
+	SnapshotXfer::version(x, 1, 1);
+	SlowDeathBehavior::xfer(x);
+}
+
+// ---- fork SHIPDEATH-1: ShipSlowDeathBehavior (see CombatModules.h) -----------------------------------------------------------------------------------------
+// RW 0x861AA9
+void ShipSlowDeathBehavior::beginSlowDeath(const DieModuleInterface::Event &event)
+{
+	SlowDeathBehavior::beginSlowDeath(event); // RW 0x860E93
+	const float delay = SimMath::fstpDword((double)data()->m_destructionDelay); // + 0x4C: fild (unsigned), fstp dword
+	const float rate = SimMath::mulf32(SimMath::divf32(3.14159274f, delay), 0.5f); // RW 0xBDD388, 0xBD869C
+	m_rollRate = rate;
+	m_pitchRate = rate;
+	GameLogic &logic = getObject()->logic();
+	if (logic.random().getValue(0, 1, "ShipSlowDeathBehavior.cpp", 0x40) == 1)
+	{
+		m_rollRate = SimMath::subf32(0.0f, m_rollRate);
+	}
+	if (logic.random().getValue(0, 1, "ShipSlowDeathBehavior.cpp", 0x46) == 1)
+	{
+		m_pitchRate = SimMath::subf32(0.0f, m_pitchRate);
+	}
+}
+
+// RW 0x861B45
+UpdateSleepTime ShipSlowDeathBehavior::update()
+{
+	using namespace SimMath;
+	const UpdateSleepTime sleep = SlowDeathBehavior::update(); // RW 0x860B39
+	Object *obj = getObject();
+	if (!obj)
+	{
+		return sleep;
+	}
+	// the rotation part of the transform, row major (Matrix3D rows 0 .. 2 without their translation)
+	float m[9];
+	for (int i = 0; i < 9; ++i)
+	{
+		m[i] = obj->getBasis()[i];
+	}
+	const Coord3D pos = *obj->getPosition();
+	{
+		// RW 0x861BC9 .. 0x861C8A: rows 1 / 2 by + 0x50
+		const float c = cosf32(m_rollRate);
+		const double S = sind(m_rollRate);
+		const float s = fstpDword(S);
+		const float r1[3] = { m[3], m[4], m[5] }, r2[3] = { m[6], m[7], m[8] };
+		m[3] = subf32(mulf32(r1[0], c), mulf32(r2[0], s));
+		m[6] = addf32(mulf32(r2[0], c), mulf32(r1[0], s));
+		m[4] = fstpDword(pc24SubW(pc24MulW((double)r1[1], (double)c), pc24MulW((double)r2[1], S)));
+		m[7] = addf32(mulf32(r2[1], c), mulf32(r1[1], s));
+		m[5] = fstpDword(pc24SubW(pc24MulW((double)r1[2], (double)c), pc24MulW((double)r2[2], S)));
+		m[8] = addf32(mulf32(r2[2], c), mulf32(r1[2], s));
+	}
+	{
+		// RW 0x861C95 .. 0x861D43: rows 0 / 2 by + 0x54
+		const float c = cosf32(m_pitchRate);
+		const double S = sind(m_pitchRate);
+		const float s = fstpDword(S);
+		const float r0[3] = { m[0], m[1], m[2] }, r2[3] = { m[6], m[7], m[8] };
+		for (int k = 0; k < 3; ++k)
+		{
+			m[6 + k] = subf32(mulf32(r2[k], c), mulf32(r0[k], s));
+			m[k] = fstpDword(pc24AddW(pc24MulW((double)r2[k], S), pc24MulW((double)c, (double)r0[k])));
+		}
+	}
+	obj->setTransform(&pos, m); // RW 0x70BA76
+	return sleep;
+}
+
+void ShipSlowDeathBehavior::crc(StateHasher &h) const
+{
+	SlowDeathBehavior::crc(h);
+	h.addFloat(m_rollRate);
+	h.addFloat(m_pitchRate);
+}
+
+// RW 0x861D51: SlowDeathBehavior's only (the rates are not saved, see CombatModules.h)
+void ShipSlowDeathBehavior::xfer(Xfer &x)
 {
 	SnapshotXfer::version(x, 1, 1);
 	SlowDeathBehavior::xfer(x);
