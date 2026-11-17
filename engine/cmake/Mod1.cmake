@@ -29,6 +29,7 @@ list(APPEND OPENBFME_SIM_SOURCES
     src/GameLogic/Module/CastleModules2.cpp # fork CASTLEMOD-1
     src/GameLogic/Module/RunOffMapBehavior.cpp # fork RUNOFF-1
     src/GameLogic/Module/HordeTransportContainDamage.cpp # fork HORDEDMG-1
+    src/GameLogic/Module/SpecialEnemySenseUpdate.cpp # fork SENSE-1
     src/GameLogic/FireLogicSystem.cpp # fork FIRELOGIC-1: TheFireLogicSystem (the terrain fire grid)
     src/GameLogic/Object/CollisionManager.cpp # fork COLLIDE-1: TheCollisionManager's library
     src/GameLogic/Object/ObjectCollision.cpp # fork COLLIDE-1: an Object's collidable
@@ -59,6 +60,7 @@ set(OPENBFME_MOD1_TESTS
     tests/test_castle_modules2.cpp # fork CASTLEMOD-1: GateProxyBehavior, OCLUpdate (synthetic data)
     tests/test_run_off_map.cpp # fork RUNOFF-1: RunOffMapBehavior, AI states 30 / 55 (synthetic data)
     tests/test_ship_slow_death.cpp # fork SHIPDEATH-1: ShipSlowDeathBehavior (synthetic data)
+    tests/test_special_enemy_sense.cpp # fork SENSE-1: SpecialEnemySenseUpdate (synthetic data)
     tests/test_firelogic.cpp # fork FIRELOGIC-1: TheFireLogicSystem (synthetic data)
     tests/test_collision_manager.cpp # fork COLLIDE-1: the collision manager library (synthetic boxes)
 )
