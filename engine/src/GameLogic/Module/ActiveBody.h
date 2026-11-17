@@ -100,6 +100,7 @@ public:
 	std::string getGrabObjectName() const override { return m_data->m_grabObject; } // RW 0x8C281E (lane BACKLOG-1)
 	// lane XP-1: RW 0x8C1CD5
 	void setMaxHealth(float newMax, int changeType) override;
+	void setDamageState(BodyDamageType state) override; // RW 0x8C1BF9 (fork lane CASTLEMOD-1)
 	// RW 0x8C31A5 internalChangeHealth (Immortal overrides it, RW 0x8C4AB4)
 	virtual void internalChangeHealth(float delta);
 	// lane BUILD-2: RW body vslot 0xAC (RW 0x5015C6): stores the current health, nothing else (GettingBuiltBehavior::startConstruction puts the health back with it)

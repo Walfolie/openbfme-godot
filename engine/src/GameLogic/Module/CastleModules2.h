@@ -39,8 +39,10 @@
 #pragma once
 
 #include "Common/Module.h"
+#include "GameLogic/Module/DamageModule.h"
 #include "GameLogic/Module/DieModule.h"
 #include "GameLogic/Module/MoneyEventModules.h"
+#include "GameLogic/Module/SpecialPowerModules.h"
 #include "GameLogic/Module/UpdateModule.h"
 
 #include <string>
@@ -142,6 +144,67 @@ private:
 	float m_height = 0.0f;        ///< + 0x34
 	float m_rubbleHeight = 0.0f;  ///< + 0x38
 	Coord3D m_start{ 0.0f, 0.0f, 0.0f }; ///< + 0x3C
+};
+
+// WallUpgradeUpdate (the castles' upgrade points: GondorCastleUpgrade, RohanCastleUpgrade, MinisWallAUpgrade, ...):
+//   * registration RW 0x659F98 (mask 5: update and damage), create RW 0x64EFD7 (0x34 bytes, constructor RW 0x8AEA12: + 0x28 0, + 0x2C 0, + 0x30 true,
+//     + 0x31 false, awake next frame), data RW 0x65428C (the plain ModuleData, no fields);
+//   * update RW 0x8AEBD3: the first run scans once (RW 0x8AEB10: with no building yet the closest object within 200 (RW 0xBE4170, FROM_CENTER_3D) of
+//     KindOf STRUCTURE and WALK_ON_TOP_OF_WALL, not this object, becomes it); a countdown runs (awake every frame) and at 0 raises the revive; with the
+//     revive, when the building stands (RW 0x8AEBA6: found, not effectively dead, no ACTIVELY_BEING_CONSTRUCTED) the object's upgrades are reset (RW
+//     0x68E083), its body set PRISTINE (body slot 0x28, RW 0x8C1BF9), DYING cleared and SOLD, UNSELECTABLE, BUILD_BEING_CANCELED, NO_COLLISIONS cleared (RW
+//     0x68D440); else it looks again in LOGICFRAMES_PER_SECOND frames;
+//   * onBodyDamageStateChange RW 0x8AEAE6: entering RUBBLE from a lower state starts the countdown at 8 seconds and wakes the module;
+//   * the interface at + 0x24 (RW 0x8AEAA9): true when the object has UPGRADE_TREBUCHET, UPGRADE_POSTERN_GATE or UPGRADE_GARRISON;
+//   * xfer RW 0x8AE96E: version 1, UpdateModule's, + 0x28, + 0x2C, + 0x30, + 0x31.
+// NOT PORTED: RW 0x8AEC79 (GeometryUpgrade calls it after a geometry change: the AI units around the object on the ground layer whose cell does not take
+// them, RW 0x6EF3C3, are moved out by three times the geometry centre's offset and faded in): the pathfinder's occupancy test RW 0x6EF3C3 is not ported
+// (S-166); stop S-1423.
+class WallUpgradeUpdate : public UpdateModule, public DamageModuleInterface
+{
+public:
+	OBFME_MODULE_XFER(WallUpgradeUpdate)
+	WallUpgradeUpdate(Thing *thing, const ModuleData *data); // RW 0x8AEA12
+	static void registerModule(ModuleFactory &modules);
+	DamageModuleInterface *getDamage() override { return this; }
+	UpdateSleepTime update() override; // RW 0x8AEBD3
+	void onDamage(const DamageInfo &) override {}
+	void onBodyDamageStateChange(const DamageInfo *info, BodyDamageType oldState, BodyDamageType newState) override; // RW 0x8AEAE6
+	void crc(StateHasher &hasher) const override;
+	bool hasUpgradeCondition() const; // RW 0x8AEAA9
+	ObjectID building() const { return m_building; }
+	int countdown() const { return m_countdown; }
+
+private:
+	void scanForBuilding();  // RW 0x8AEB10
+	bool buildingStands() const; // RW 0x8AEBA6
+	ObjectID m_building = INVALID_ID; ///< + 0x28
+	int m_countdown = 0;              ///< + 0x2C
+	bool m_scanPending = true;        ///< + 0x30
+	bool m_revive = false;            ///< + 0x31
+};
+
+// ManTheWallsSpecialPower (GondorGreatKeep, ArnorGreatKeep: SPECIAL_MAN_THE_WALLS):
+//   * registration RW 0x65B809, create RW 0x6521DF (0x34 bytes, constructor RW 0x8CB3D1 over SpecialPowerModule's RW 0x8973EE), the plain
+//     SpecialPowerModuleData (RW 0x65247C); the special power interface is SpecialPowerModule's (RW 0xC64FF0) except doSpecialPower (slot 0x28, RW 0x8CBDBA);
+//   * doSpecialPower RW 0x8CBDBA (SpecialPowerModule's own is not called): the spots (RW 0x8CBCCE: every object, TheGameLogic's list through RW 0xA39420, of
+//     KindOf TACTICAL_MARKER that is this object's ally, RW 0x660B85 mask 4) each take a record with no members; none: nothing. Then every HORDE that is an
+//     ally, alive (RW 0xC10E20) and on this object's side of the map (RW 0xC0F374) goes to one record (RW 0x8CBB53 -> 0x8CBACB): the records sorted by the
+//     squared 2D distance of the spot (SSE dy * dy + dx * dx, RW 0x8CBA40; STLport sort RW 0x8CB9E4 with RW 0x8CB401), the nearest whose member count is at
+//     most 0, else at most 1, ... at most 9, else the nearest; last every record with members moves them as a group to its spot (RW 0x8CB5A6: an AIGroup
+//     of the members in order, groupMoveToPosition RW 0x774897 with no waypoint, target, facing or formation, source 0).
+class ManTheWallsSpecialPower : public SpecialPowerModule
+{
+public:
+	OBFME_MODULE_XFER(ManTheWallsSpecialPower)
+	ManTheWallsSpecialPower(Thing *thing, const SpecialPowerModuleData *data) : SpecialPowerModule(thing, data) {} // RW 0x8CB3D1
+	static void registerModule(ModuleFactory &modules);
+	void doSpecialPower(unsigned options) override; // RW 0x8CBDBA
+	// tests: the spot each horde was sent to by the last use, in send order (spot id, horde id)
+	const std::vector<std::pair<ObjectID, ObjectID>> &lastOrders() const { return m_lastOrders; }
+
+private:
+	std::vector<std::pair<ObjectID, ObjectID>> m_lastOrders; ///< diagnostics (not retail state: not hashed, not saved)
 };
 
 namespace CastleModules2

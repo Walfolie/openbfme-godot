@@ -598,6 +598,37 @@ void ActiveBody::doDamageFX(const DamageInfo &info)
 
 // lane XP-1: RW 0x8C1CD5 setMaxHealth: the maximum and the initial health become newMax; type 1 changes the health by (health / oldMax) * newMax - health,
 // type 2 by newMax - oldMax (SSE single, through internalChangeHealth); then a health above the new maximum comes down to it
+// RW 0x8C1BF9 (body slot 0x28): the state's health less the current health (SSE: fraction * max, then - health) through internalChangeHealth (slot 0x84,
+// RW 0x8C31A5), then slot 0x54 (RW 0x8C2A5D, the damage state again); an unknown state skips the change
+void ActiveBody::setDamageState(BodyDamageType state)
+{
+	bool known = true;
+	float target = 0.0f;
+	switch (state)
+	{
+	case BODY_PRISTINE:
+		target = m_maxHealth;
+		break;
+	case BODY_DAMAGED:
+		target = SimMath::mulf32(m_damagedFraction, m_maxHealth);
+		break;
+	case BODY_REALLYDAMAGED:
+		target = SimMath::mulf32(m_reallyDamagedFraction, m_maxHealth);
+		break;
+	case BODY_RUBBLE:
+		target = 0.0f;
+		break;
+	default:
+		known = false;
+		break;
+	}
+	if (known)
+	{
+		internalChangeHealth(SimMath::subf32(target, m_currentHealth));
+	}
+	updateDamageState();
+}
+
 void ActiveBody::setMaxHealth(float newMax, int changeType)
 {
 	const float oldMax = m_maxHealth;

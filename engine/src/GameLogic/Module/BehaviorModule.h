@@ -100,6 +100,9 @@ public:
 	// lane SUMMON-1: RW vt[0x58] with its second argument 0 (ActiveBody RW 0x8C47DE; InactiveBody's slot is the empty RW 0x8851E4), the ObjectCreationList's
 	// initial health (RW 0x5F1E98): `percent` of the revive reference, a percent above 100 scaling the max health first
 	virtual void setInitialHealthPercent(float percent) { (void)percent; }
+	// fork lane CASTLEMOD-1: slot 0x28 setDamageState (ActiveBody RW 0x8C1BF9): the health of the state (pristine: the maximum, damaged / really damaged: its
+	// fraction of the maximum, rubble: 0), then the damage state is evaluated again
+	virtual void setDamageState(BodyDamageType state) { (void)state; }
 };
 
 // ZH ContainModuleInterface (the membership part). The members are Objects; the list keeps insertion order.

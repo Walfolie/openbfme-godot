@@ -24,7 +24,7 @@ const char *const GeometryUpgrade::kStopDrawMeshes =
 	"[S-1423] GeometryUpgrade (RW 0x8BADC0 / 0x8BAC96): the draw modules' WallBoundsMesh / RampMesh1 / RampMesh2 change (vslots 0xD4 / 0xD8) is not applied: the "
 	"pathfinder's wall tops and ramps stay the template's draw module meshes (lane WALL-1)";
 const char *const GeometryUpgrade::kStopWallUpgrade =
-	"[S-1423] GeometryUpgrade (RW 0x8BAFF5): the object's WallUpgradeUpdate (not ported) does not run RW 0x8AEC79 after the geometry change";
+	"[S-1423] GeometryUpgrade (RW 0x8BAFF5): the object's WallUpgradeUpdate does not run RW 0x8AEC79 after the geometry change (that routine is not ported: the pathfinder occupancy test RW 0x6EF3C3, S-166)";
 
 namespace
 {

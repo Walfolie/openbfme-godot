@@ -55,4 +55,4 @@ Packages (in this order; each package is ported, tested and committed together):
 
 Done before this census: fork lane AOD-1 (AODCrushCollide, OathbreakersFadeAwayBehavior, AODHordeContain).
 
-Done since: package A, fork lane CASTLEMOD-1: GateProxyBehavior, OCLUpdate, RubbleRiseUpdate (WallUpgradeUpdate and ManTheWallsSpecialPower follow).
+Done since: package A, fork lane CASTLEMOD-1: GateProxyBehavior, OCLUpdate, RubbleRiseUpdate, WallUpgradeUpdate (without its move-out routine RW 0x8AEC79, S-1423), ManTheWallsSpecialPower: package A is done.

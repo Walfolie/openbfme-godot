@@ -12,15 +12,18 @@
 #include "Common/StateHash.h"
 #include "Common/Thing/ModuleFactory.h"
 #include "Common/Xfer.h"
+#include "GameLogic/AI/AIGroup.h"
 #include "GameLogic/AI/AIPathfind.h"
 #include "GameLogic/AI/AIWorld.h"
 #include "GameLogic/BeaconCommands.h"
 #include "GameLogic/BitFlags.h"
 #include "GameLogic/FXEvents.h"
+#include "GameLogic/LivingWorld/StlportAlgorithm.h"
 #include "GameLogic/Module/AIUpdate.h"
 #include "GameLogic/Combat/CombatNames.h"
 #include "GameLogic/GameLogic.h"
 #include "GameLogic/Object/Object.h"
+#include "GameLogic/Object/PartitionManager.h"
 #include "GameLogic/ObjectCreationList.h"
 #include "GameLogic/SimMath.h"
 
@@ -110,6 +113,8 @@ void CastleModules2::registerAll(ModuleFactory &modules)
 {
 	OCLUpdate::registerModule(modules);
 	RubbleRiseUpdate::registerModule(modules);
+	WallUpgradeUpdate::registerModule(modules);
+	ManTheWallsSpecialPower::registerModule(modules);
 }
 
 // ---- OCLUpdate -----------------------------------------------------------------------------------------------------------------------------------------
@@ -417,4 +422,233 @@ void RubbleRiseUpdate::xfer(Xfer &x)
 	x.xferReal(&m_start.x);
 	x.xferReal(&m_start.y);
 	x.xferReal(&m_start.z);
+}
+
+// ---- WallUpgradeUpdate ---------------------------------------------------------------------------------------------------------------------------------
+
+void WallUpgradeUpdate::registerModule(ModuleFactory &modules)
+{
+	static const char kName[] = "WallUpgradeUpdate"; // RW 0x659F98
+	modules.bindModuleProc(kName, MODULETYPE_BEHAVIOR, [](Thing *thing, const ModuleData *data, const ModuleFactory::ModuleTemplate &) -> std::unique_ptr<Module> {
+		return std::make_unique<WallUpgradeUpdate>(thing, data);
+	});
+}
+
+WallUpgradeUpdate::WallUpgradeUpdate(Thing *thing, const ModuleData *data)
+	: UpdateModule(thing, data)
+{
+	if (Object *obj = getObject())
+	{
+		friend_setNextCallFrame(obj->logic().getFrame() + 1); // RW 0x8AEA77: setWakeFrame(object, 1)
+	}
+}
+
+// RW 0x8AEAA9
+bool WallUpgradeUpdate::hasUpgradeCondition() const
+{
+	static const int kTreb = CombatNames::modelCondition("UPGRADE_TREBUCHET"), kPostern = CombatNames::modelCondition("UPGRADE_POSTERN_GATE"),
+					 kGarrison = CombatNames::modelCondition("UPGRADE_GARRISON");
+	const Object *obj = getObject();
+	return obj->testModelCondition(kTreb) || obj->testModelCondition(kPostern) || obj->testModelCondition(kGarrison);
+}
+
+// RW 0x8AEAE6
+void WallUpgradeUpdate::onBodyDamageStateChange(const DamageInfo *, BodyDamageType oldState, BodyDamageType newState)
+{
+	if (newState > oldState && newState == BODY_RUBBLE)
+	{
+		m_countdown = (int)LOGICFRAMES_PER_SECOND * 8; // RW 0xD9F608 << 3
+		setWakeFrame(getObject(), UPDATE_SLEEP_NONE);
+	}
+}
+
+// RW 0x8AEB10
+void WallUpgradeUpdate::scanForBuilding()
+{
+	if (m_building != INVALID_ID)
+	{
+		return;
+	}
+	Object *obj = getObject();
+	GameLogic &logic = obj->logic();
+	static const unsigned kStructure = (unsigned)CombatNames::kindOf("STRUCTURE"), kWallTop = (unsigned)CombatNames::kindOf("WALK_ON_TOP_OF_WALL");
+	PartitionFilterFn kinds([](Object &o) { return o.isKindOf(kStructure) && o.isKindOf(kWallTop); }); // RW 0x46E72F(0, 7, 0x3C): both, none forbidden
+	PartitionFilterFn notSelf([obj](Object &o) { return &o != obj; });                                     // vtable 0xC1D660, allow RW 0x661220
+	if (Object *found = logic.partition().getClosestObject(*obj->getPosition(), 200.0f, FROM_CENTER_3D, { &kinds, &notSelf })) // RW 0xBE4170
+	{
+		m_building = found->getID();
+	}
+}
+
+// RW 0x8AEBA6
+bool WallUpgradeUpdate::buildingStands() const
+{
+	const Object *b = getObject()->logic().findObjectByID(m_building); // RW 0x449681
+	if (!b || b->isEffectivelyDead())
+	{
+		return false;
+	}
+	static const int kBeingBuilt = CombatNames::modelCondition("ACTIVELY_BEING_CONSTRUCTED"); // 0x45
+	return !b->testModelCondition(kBeingBuilt);
+}
+
+// RW 0x8AEBD3
+UpdateSleepTime WallUpgradeUpdate::update()
+{
+	UpdateSleepTime ret = UPDATE_SLEEP_FOREVER;
+	if (m_scanPending)
+	{
+		m_scanPending = false;
+		scanForBuilding();
+	}
+	if (m_countdown > 0)
+	{
+		--m_countdown;
+		if (m_countdown == 0)
+		{
+			m_revive = true;
+		}
+		else
+		{
+			ret = UPDATE_SLEEP_NONE;
+		}
+	}
+	if (!m_revive)
+	{
+		return ret;
+	}
+	if (!buildingStands())
+	{
+		return UPDATE_SLEEP(LOGICFRAMES_PER_SECOND); // RW 0xD9F608
+	}
+	Object *obj = getObject();
+	obj->resetUpgrades(); // RW 0x68E083
+	if (BodyModuleInterface *body = obj->getBodyModule()) // + 0x25C
+	{
+		body->setDamageState(BODY_PRISTINE); // slot 0x28 (RW 0x8C1BF9)
+	}
+	static const int kDying = CombatNames::modelCondition("DYING"); // + 0x113 bit 6
+	if (obj->testModelCondition(kDying))
+	{
+		obj->setModelConditionState(kDying, false);
+	}
+	for (const char *name : { "SOLD", "UNSELECTABLE", "BUILD_BEING_CANCELED", "NO_COLLISIONS" }) // RW 0x7485E3(0, 0x13, 3, 0x56, 4) -> RW 0x68D440
+	{
+		obj->setStatus((unsigned)CombatNames::status(name), false);
+	}
+	m_revive = false;
+	return ret;
+}
+
+void WallUpgradeUpdate::crc(StateHasher &hasher) const
+{
+	UpdateModule::crc(hasher);
+	hasher.addU32(0x3A110000u | (m_scanPending ? 1u : 0u) | (m_revive ? 2u : 0u));
+	hasher.addU32(m_building);
+	hasher.addU32((std::uint32_t)m_countdown);
+}
+
+// RW 0x8AE96E: version 1, UpdateModule's, + 0x28, + 0x2C, + 0x30, + 0x31
+void WallUpgradeUpdate::xfer(Xfer &x)
+{
+	XferVersion v{ 1, 1 };
+	x.xferVersion(v);
+	xferUpdateModule(x);
+	x.xferObjectID(&m_building);
+	x.xferInt(&m_countdown);
+	x.xferBool(&m_scanPending);
+	x.xferBool(&m_revive);
+}
+
+// ---- ManTheWallsSpecialPower -------------------------------------------------------------------------------------------------------------------------
+
+void ManTheWallsSpecialPower::registerModule(ModuleFactory &modules)
+{
+	bind<ManTheWallsSpecialPower, SpecialPowerModuleData>(modules, "ManTheWallsSpecialPower"); // RW 0x65B809
+}
+
+// RW 0x8CBDBA
+void ManTheWallsSpecialPower::doSpecialPower(unsigned)
+{
+	Object *self = getObject();
+	GameLogic &logic = self->logic();
+	m_lastOrders.clear();
+	struct Record
+	{
+		Object *spot;
+		std::vector<Object *> members;
+	};
+	std::vector<Record> records;
+	// RW 0x8CBCCE: the spots
+	static const unsigned kMarker = (unsigned)CombatNames::kindOf("TACTICAL_MARKER"), kHorde = (unsigned)CombatNames::kindOf("HORDE");
+	PartitionFilterFn markers([](Object &o) { return o.isKindOf(kMarker); });                    // RW 0x444D39(0, 0x73)
+	PartitionFilterFn allies([self](Object &o) { return self->getRelationship(o) == ALLIES; }); // vtable 0xC11DC0 (RW 0x660B85, mask 4)
+	for (const PartitionHit &h : logic.partition().iterateAllObjects({ &allies, &markers }))     // RW 0xA39420
+	{
+		records.push_back(Record{ h.object, {} }); // RW 0x8CBC97
+	}
+	if (records.empty())
+	{
+		return;
+	}
+	// the hordes
+	PartitionFilterFn hordes([](Object &o) { return o.isKindOf(kHorde); });                    // RW 0x444D39(0, 0x6D)
+	PartitionFilterFn alive([](Object &o) { return !o.isEffectivelyDead(); });                  // vtable 0xC10E20
+	PartitionFilterFn sameMap([self](Object &o) { return o.isOffMap() == self->isOffMap(); });  // vtable 0xC0F374
+	const PartitionHits units = logic.partition().iterateAllObjects({ &allies, &alive, &sameMap, &hordes });
+	// RW 0x8CBB53: each to its record
+	for (const PartitionHit &h : units)
+	{
+		Object *unit = h.object;
+		const Coord3D &up = *unit->getPosition();
+		std::vector<std::pair<float, Record *>> byDistance; // RW 0x8CBA40
+		byDistance.reserve(records.size());
+		for (Record &r : records)
+		{
+			const Coord3D &sp = *r.spot->getPosition();
+			const float dy = SimMath::subf32(sp.y, up.y), dx = SimMath::subf32(sp.x, up.x);
+			byDistance.push_back({ SimMath::addf32(SimMath::mulf32(dy, dy), SimMath::mulf32(dx, dx)), &r });
+		}
+		Stlport::sort(byDistance, [](const std::pair<float, Record *> &a, const std::pair<float, Record *> &b) { return b.first > a.first; }); // RW 0x8CB401
+		// RW 0x8CBACB: the nearest record holding at most `limit` members, limit 0 .. 9; else the nearest
+		Record *pick = nullptr;
+		for (size_t limit = 0; limit < 10 && !pick; ++limit)
+		{
+			for (const std::pair<float, Record *> &e : byDistance)
+			{
+				if (e.second->members.size() <= limit)
+				{
+					pick = e.second;
+					break;
+				}
+			}
+		}
+		if (!pick)
+		{
+			pick = byDistance.front().second;
+		}
+		pick->members.push_back(unit); // RW 0x5F1B20
+	}
+	// RW 0x8CB5A6: each record's members move to its spot as a group
+	for (const Record &r : records)
+	{
+		if (r.members.empty())
+		{
+			continue;
+		}
+		std::vector<ObjectID> ids;
+		for (Object *m : r.members)
+		{
+			ids.push_back(m->getID());
+			m_lastOrders.push_back({ r.spot->getID(), m->getID() });
+		}
+		AIGroup group(logic, ids);                                           // RW 0x70042A, adds RW 0x770917
+		group.groupMoveToPosition(*r.spot->getPosition(), false, CMD_FROM_PLAYER); // RW 0x774897 (source 0)
+	}
+}
+
+// the SpecialPowerModule's state alone (retail's module table keeps SpecialPowerModule's xfer)
+void ManTheWallsSpecialPower::xfer(Xfer &x)
+{
+	SpecialPowerModule::xfer(x);
 }

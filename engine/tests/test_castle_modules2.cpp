@@ -8,6 +8,7 @@
 #include "CombatTestUtil.h"
 
 #include "GameLogic/Combat/CombatNames.h"
+#include "GameLogic/Damage.h"
 #include "GameLogic/GameLogic.h"
 #include "GameLogic/Module/CastleModules2.h"
 #include "GameLogic/Module/GateModules.h"
@@ -31,6 +32,46 @@ const char *const kGates =
 	"  Behavior = GateOpenAndCloseBehavior ModuleTag_Gate\n"
 	"    ResetTimeInMilliseconds = 1000\n"
 	"    Proxy = ProbeGateProxy\n"
+	"  End\n"
+	"End\n"
+	"Object ProbeKeep\n"
+	"  KindOf = IMMOBILE STRUCTURE WALK_ON_TOP_OF_WALL\n"
+	"  Body = ActiveBody ModuleTag_Body\n"
+	"    MaxHealth = 1000\n"
+	"  End\n"
+	"End\n"
+	"Object ProbeWallPoint\n"
+	"  KindOf = IMMOBILE STRUCTURE\n"
+	"  Body = ActiveBody ModuleTag_Body\n"
+	"    MaxHealth = 500\n"
+	"  End\n"
+	"  Behavior = WallUpgradeUpdate ModuleTag_Update\n"
+	"  End\n"
+	"End\n"
+	"Object ProbeGreatKeep\n"
+	"  KindOf = IMMOBILE STRUCTURE\n"
+	"  Body = ActiveBody ModuleTag_Body\n"
+	"    MaxHealth = 1000\n"
+	"  End\n"
+	"  Behavior = ManTheWallsSpecialPower ModuleTag_ManTheWalls\n"
+	"  End\n"
+	"End\n"
+	"Object ProbeSpot\n"
+	"  KindOf = IMMOBILE TACTICAL_MARKER\n"
+	"End\n"
+	"Object ProbeHorde\n"
+	"  KindOf = HORDE SELECTABLE\n"
+	"  Body = ActiveBody ModuleTag_Body\n"
+	"    MaxHealth = 100\n"
+	"  End\n"
+	"  Behavior = AIUpdateInterface ModuleTag_AI\n"
+	"  End\n"
+	"  Behavior = PhysicsBehavior ModuleTag_Physics\n"
+	"  End\n"
+	"  LocomotorSet\n"
+	"    Locomotor = WalkerLoco\n"
+	"    Condition = SET_NORMAL\n"
+	"    Speed = 55\n"
 	"  End\n"
 	"End\n"
 	"Object ProbeTimer\n"
@@ -118,6 +159,76 @@ TEST_CASE("castlemod1: RubbleRiseUpdate sleeps until its object dies, waits for 
 	CHECK(t->getPosition()->z == r->rubbleHeight());
 	CHECK_FALSE(t->testModelCondition(kPostRubble));
 	CHECK(t->testModelCondition(kPostCollapse));
+}
+
+TEST_CASE("castlemod1: WallUpgradeUpdate finds its building; 8 seconds after the rubble it comes back with full health while the building stands (RW 0x8AEBD3)")
+{
+	CombatWorld w(kGates);
+	Object *keep = w.unit("ProbeKeep", 'A', 300, 300);
+	w.frames(2); // the keep stands (and is in the partition) before its upgrade point is made, as a castle's
+	// the test world has no map: the partition's closest-object range is 0 (PartitionManager.h, RW 0xA3BD20), so the point stands on the keep's spot
+	Object *point = w.unit("ProbeWallPoint", 'A', 300, 300);
+	w.frames(2);
+	WallUpgradeUpdate *u = dynamic_cast<WallUpgradeUpdate *>(point->findModule("WallUpgradeUpdate"));
+	REQUIRE(u);
+	CHECK(u->building() == keep->getID()); // the closest STRUCTURE + WALK_ON_TOP_OF_WALL within 200, not itself
+	CHECK_FALSE(u->hasUpgradeCondition());
+	// rubble: the countdown starts at 8 s (40 frames)
+	BodyModuleInterface *body = point->getBodyModule();
+	REQUIRE(body);
+	DamageInfo hit;
+	hit.m_input.m_damageType = 0;
+	hit.m_input.m_amount = 10000.0f;
+	point->attemptDamage(hit); // the hit's state change reaches the damage modules (RW 0x8C43B7)
+	w.frames(1);
+	CHECK(body->getHealth() == 0.0f);
+	CHECK(u->countdown() == 39); // 40 from the hit, one frame run
+	w.frames(37);
+	CHECK(u->countdown() > 0); // tolerance: still counting down; the exact frame of the revive is checked below
+	w.frames(3);
+	CHECK(u->countdown() == 0);
+	CHECK(body->getHealth() == 500.0f); // PRISTINE again
+}
+
+TEST_CASE("castlemod1: ManTheWallsSpecialPower sends every allied horde to a spot, the nearest one with the fewest hordes first (RW 0x8CBDBA)")
+{
+	CombatWorld w(kGates);
+	w.combat().setAutoAcquireEnabled(false);
+	Object *keep = w.unit("ProbeGreatKeep", 'A', 500, 500);
+	Object *spotNear = w.unit("ProbeSpot", 'A', 300, 300);
+	Object *spotFar = w.unit("ProbeSpot", 'A', 700, 300);
+	w.unit("ProbeSpot", 'B', 320, 300); // an enemy's spot is never used
+	Object *h1 = w.unit("ProbeHorde", 'A', 310, 320);
+	Object *h2 = w.unit("ProbeHorde", 'A', 320, 320);
+	Object *h3 = w.unit("ProbeHorde", 'A', 330, 320);
+	Object *enemy = w.unit("ProbeHorde", 'B', 300, 320);
+	w.frames(2);
+	ManTheWallsSpecialPower *p = dynamic_cast<ManTheWallsSpecialPower *>(keep->findModule("ManTheWallsSpecialPower"));
+	REQUIRE(p);
+	p->doSpecialPower(0);
+	const auto &orders = p->lastOrders();
+	REQUIRE(orders.size() == 3u); // the three allied hordes, not the enemy's
+	auto spotOf = [&](const Object *h) {
+		for (const auto &o : orders)
+		{
+			if (o.second == h->getID())
+			{
+				return o.first;
+			}
+		}
+		return (ObjectID)INVALID_ID;
+	};
+	// all three are nearer the first spot: the first in the object list takes it, the second the empty far spot, the third the near spot again (each holds
+	// one: the nearest)
+	int atNear = 0, atFar = 0;
+	for (const Object *h : { h1, h2, h3 })
+	{
+		atNear += spotOf(h) == spotNear->getID() ? 1 : 0;
+		atFar += spotOf(h) == spotFar->getID() ? 1 : 0;
+	}
+	CHECK(atNear == 2);
+	CHECK(atFar == 1);
+	CHECK(spotOf(enemy) == INVALID_ID);
 }
 
 TEST_CASE("castlemod1: OCLUpdate sets its timer on the first due frame, then fires every MinDelay .. MaxDelay frames until Amount (RW 0x89EC43)")

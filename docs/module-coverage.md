@@ -284,7 +284,7 @@ The live report's `unported_modules` (objects alive at the end of the run) of ei
 | 185 | SupplyCenterProductionExitUpdate | Behavior | 4 | 1 | ported |
 | 186 | SymbioticStructuresBody | Body | 4 | 4 | ported |
 | 187 | TooltipUpgrade | Behavior | 4 | 6 | missing |
-| 188 | WallUpgradeUpdate | Behavior | 4 | 2 | missing |
+| 188 | WallUpgradeUpdate | Behavior | 4 | 2 | ported |
 | 189 | GateProxyBehavior | Behavior | 3 | 3 | ported |
 | 190 | LaserUpdate | ClientUpdate | 3 | 3 | missing |
 | 191 | OCLUpdate | Behavior | 3 | 3 | ported |
@@ -302,7 +302,7 @@ The live report's `unported_modules` (objects alive at the end of the run) of ei
 | 203 | GarrisonContain | Behavior | 2 | 2 | ported |
 | 204 | InvisibilitySpecialPower | Behavior | 2 | 2 | ported |
 | 205 | LocomotorSetUpgrade | Behavior | 2 | 1 | missing |
-| 206 | ManTheWallsSpecialPower | Behavior | 2 | 2 | missing |
+| 206 | ManTheWallsSpecialPower | Behavior | 2 | 2 | ported |
 | 207 | PoisonedBehavior | Behavior | 2 | 2 | missing |
 | 208 | ProductionQueueHordeContain | Behavior | 2 | 2 | missing |
 | 209 | ReplaceObjectUpdate | Behavior | 2 | 2 | missing |
