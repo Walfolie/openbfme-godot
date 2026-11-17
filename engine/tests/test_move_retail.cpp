@@ -22,6 +22,7 @@
 #include "GameLogic/GameLogic.h"
 #include "GameLogic/Module/AIUpdate.h"
 #include "GameLogic/Object/Contain/HordeContainRuntime.h"
+#include "GameLogic/Combat/CombatNames.h"
 #include "GameLogic/Combat/CombatState.h"
 #include "GameLogic/Object/Object.h"
 #include "GameLogic/Object/RetailObjectWorld.h"
@@ -222,6 +223,7 @@ struct SweepResult
 	unsigned lifetimeWaitsForWake = 0; // the module sleeps until woken (WaitForWakeUp): it never expires by itself
 	unsigned deadFrame = 0;           // the first logic frame the object was dead or gone, 0 when it lived through the sweep
 	bool knocked = false;             // lane COMBAT-4 r3: the object lay stunned (thrown by a shockwave or a crush) at some frame of the sweep
+	bool ranOffMap = false;           // fork RUNOFF-1: RunOffMapBehavior gave it FLEE_OFF_MAP in its constructor (RW 0x865321): it leaves, locked
 };
 
 // orders every template of `batch` (spread over the map) to a point and runs the logic; returns one result per template
@@ -256,6 +258,8 @@ std::vector<SweepResult> sweepBatch(RetailGame &g, const std::vector<const Thing
 		dests.push_back(Coord3D{ x, y + 180.0f, 0.0f });
 		r.horde = o->getContain() && o->getContain()->getHordeContainInterface();
 		r.members = r.horde ? o->getContain()->getContainCount() : 0;
+		static const unsigned kFlee = (unsigned)CombatNames::status("FLEE_OFF_MAP");
+		r.ranOffMap = o->testStatus(kFlee);
 		if (const LifetimeUpdate *life = dynamic_cast<const LifetimeUpdate *>(o->findModule("LifetimeUpdate")))
 		{
 			r.lifetimeDieFrame = life->dieFrame();
@@ -437,7 +441,8 @@ TEST_CASE("move retail: every ground unit and horde template of the install, ord
 		}
 	}
 	REQUIRE(units.size() > 650);
-	size_t moved = 0, still = 0, unported = 0, hordes = 0, hordesChecked = 0, lifetimeLimited = 0, knocked = 0;
+	size_t moved = 0, still = 0, unported = 0, hordes = 0, hordesChecked = 0, lifetimeLimited = 0, knocked = 0, ranOff = 0;
+	std::vector<std::string> ranOffNames;
 	std::vector<std::string> knockedNames;
 	std::vector<std::string> lifetimeNames;
 	std::vector<std::string> unexplained, badHordes, ridersWithoutSlots;
@@ -468,6 +473,13 @@ TEST_CASE("move retail: every ground unit and horde template of the install, ord
 				// COMBAT-2 ported LifetimeUpdate (RW 0x7A7F8B): the create-a-hero replacement objects die when their SCHEDULED lifetime runs out, in exactly that frame
 				++lifetimeLimited;
 				lifetimeNames.push_back(r.name);
+			}
+			else if (r.ranOffMap && r.problem == "left the world during the sweep")
+			{
+				// fork RUNOFF-1: the riderless horses run 500 ahead (RW 0x86540A) with the AI machine locked (AI_MOVE_AND_DELETE, RW 0x74BA18), ignore the order and
+				// are destroyed at the end of their walk: by data
+				++ranOff;
+				ranOffNames.push_back(r.name);
 			}
 			else if (r.knocked)
 			{
@@ -515,7 +527,17 @@ TEST_CASE("move retail: every ground unit and horde template of the install, ord
 	CHECK(ridersWithoutSlots[1].rfind("MordorHaradrimArcherHordeOnMumakil", 0) == 0);
 	// the pinned totals of this install: 710 templates; the ones that do not walk are still by data
 	CHECK(units.size() == 710);
-	CHECK(moved + still + unported + lifetimeLimited + knocked + unexplained.size() == units.size());
+	CHECK(moved + still + unported + lifetimeLimited + knocked + ranOff + unexplained.size() == units.size());
+	{
+		std::sort(ranOffNames.begin(), ranOffNames.end());
+		std::string joined;
+		for (const std::string &n : ranOffNames)
+		{
+			joined += (joined.empty() ? "" : ",") + n;
+		}
+		std::printf("  info: ran off the map (%zu): %s\n", ranOffNames.size(), joined.c_str());
+		CHECK(joined == "GondorCavalryRiderless,TheodenCavalryRiderless"); // pinned: the two RunOffMapBehavior templates without RequiresSpecificTrigger
+	}
 	{
 		std::string joined;
 		for (const std::string &n : knockedNames)

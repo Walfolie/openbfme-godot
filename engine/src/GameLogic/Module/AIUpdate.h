@@ -103,6 +103,13 @@ public:
 
 	// ---- the command interface (ZH AICommandInterface) ----
 	void aiMoveToPosition(const Coord3D &pos, CommandSourceType source);
+	// fork RUNOFF-1: AI command 0x38 / 0x41 (aiMoveToAndDelete RW 0x462224 / aiMoveToAndDie RW 0x462290 in the BFME2 decomp; RotWK's switch RW 0x66AA18
+	// calls AI vslot 0x54 / 0x58): the gate, then RW 0x66B7A2 / 0x66B817: nothing for an object that cannot move (RW 0x690E97; unlike the move order no
+	// RAMPAGE test); the current locomotor's preferred point is the object's position (RW 0x5E39CE); the machine cleared (slot 0x14), the goal position
+	// (RW 0x6654AD -> 0x6636D9, clipped for a player's order), the blocked frames (+ 0x16C) and flag (+ 0x3B8) cleared, the source kept (+ 0x48), state
+	// 30 / 55 (AIMoveAndDeleteState). The voice of a player or script order (RW 0x66B379) is client side
+	void aiMoveToAndDelete(const Coord3D &pos, CommandSourceType source);
+	void aiMoveToAndDie(const Coord3D &pos, CommandSourceType source);
 	// lane BACKLOG2: RW 0x79664F AICommandInterface::aiMoveToPositionEvenIfSleeping (BFME2 decomp AICommandInterface_aiMoveToPositionEvenIfSleeping.cpp, tier A): AI command 0x36 with the position; the
 	// gate RW 0x667174 lets it through a sleeping mood (BFME2 decomp AIUpdateInterfacePrivateCommands.cpp:isAllowedToRespondToAiCommands); the command runs the
 	// move to the position (ZH AIUpdateInterface::aiDoCommand AICMD_MOVE_TO_POSITION_EVEN_IF_SLEEPING -> privateMoveToPosition: donor fact)
@@ -619,6 +626,7 @@ protected:
 private:
 	class ObjectLocomotorHost;
 	void privateMoveToPosition(const Coord3D &pos, CommandSourceType source);
+	void privateMoveToAndDelete(const Coord3D &pos, CommandSourceType source, unsigned state); // fork RUNOFF-1
 	void goalPositionClipped(const Coord3D &pos, CommandSourceType source, Coord3D &out) const;
 	void doMovementCompleteBookkeeping();
 	void readCombatSettings(const ModuleData *data);

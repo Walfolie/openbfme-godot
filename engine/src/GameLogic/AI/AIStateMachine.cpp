@@ -6,10 +6,15 @@
 #include "Common/GameCommon.h"
 #include "Common/StateHash.h"
 #include "GameLogic/AI/AIGuard.h"
+#include "GameLogic/AI/AIPathfind.h"
 #include "GameLogic/AI/AIWorld.h"
+#include "GameLogic/Combat/CombatNames.h"
+#include "GameLogic/Damage.h"
 #include "GameLogic/GameLogic.h"
+#include "GameLogic/Locomotor.h"
 #include "GameLogic/ObjectTemplateInfo.h"
 #include "GameLogic/Module/AIUpdate.h"
+#include "GameLogic/Module/ActiveBody.h"
 #include "GameLogic/Module/EmotionModules.h"
 #include "GameLogic/Module/StancesBehavior.h"
 #include "GameLogic/Object/Object.h"
@@ -725,6 +730,92 @@ void AIMoveToMachineState::onExit(StateExitType)
 		m_move->onExit();
 		m_move.reset();
 	}
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+// fork RUNOFF-1: AIMoveAndDeleteState / AIMoveAndDieState (RW 0x7447B2 / 0x7447D9; see AIStateMachine.h)
+// ---------------------------------------------------------------------------------------------------------------------------------
+AIMoveAndDeleteState::AIMoveAndDeleteState(AIStateMachine &m, bool dies)
+	: AIMoveToMachineState(m, dies ? "AIMoveAndDieState" : "AIMoveAndDeleteState")
+	, m_dies(dies)
+{
+}
+
+// RW 0x75066F / 0x751A28
+StateReturnType AIMoveAndDeleteState::onEnter()
+{
+	m_adjustsDestination = false; // + 0x48
+	machine().lock();             // machine + 0x38
+	Object *goalObj = machine().goalObject();
+	m_goalPosition = goalObj ? *goalObj->getPosition() : machine().goalPosition();
+	m_appendGoalPosition = true;
+	if (!m_dies)
+	{
+		static const int kMoving = CombatNames::modelCondition("MOVING"), kRunningOffMap = CombatNames::modelCondition("RUNNING_OFF_MAP");
+		owner().setModelConditionState(kMoving, true);
+		owner().setModelConditionState(kRunningOffMap, true);
+	}
+	// the internal move's onEnter (RW 0x74DADA)
+	m_move = std::make_unique<AIMoveToState>(ai().mover(), m_goalPosition, m_adjustsDestination);
+	return m_move->onEnter();
+}
+
+// RW 0x74BA18 / 0x752E33
+StateReturnType AIMoveAndDeleteState::update()
+{
+	Object &obj = owner();
+	if (obj.isEffectivelyDead())
+	{
+		return STATE_FAILURE;
+	}
+	AIUpdateInterface &a = ai();
+	if (Locomotor *loco = a.curLocomotor())
+	{
+		loco->setFlags(loco->flags() | 2u); // + 0x44 bit 1 (ZH setAllowInvalidPosition); the port's locomotor has no reader of it (S-1101)
+	}
+	if (m_appendGoalPosition && !a.mover().isWaitingForPath())
+	{
+		if (Path *path = a.mover().path())
+		{
+			m_goalPosition.z = obj.logic().getGroundHeight(m_goalPosition.x, m_goalPosition.y);
+			path->appendNode(&m_goalPosition, LAYER_GROUND); // RW 0x665429
+			m_appendGoalPosition = false;
+		}
+	}
+	if (!m_move)
+	{
+		return STATE_FAILURE;
+	}
+	const StateReturnType ret = m_move->update(); // RW 0x748E46
+	if (ret == STATE_CONTINUE)
+	{
+		return ret;
+	}
+	if (!m_dies)
+	{
+		obj.logic().destroyObject(&obj); // RW 0x62BBAB
+		return ret;
+	}
+	const ActiveBody *body = dynamic_cast<const ActiveBody *>(obj.getBodyModule());
+	if (Object *killer = obj.logic().findObjectByID(body ? body->lastDamager() : INVALID_ID))
+	{
+		killer->scoreTheKill(obj, 1); // RW 0x6955BC
+	}
+	obj.kill(DAMAGE_UNRESISTABLE, DEATH_NORMAL); // RW 0x698EC3(8, 0)
+	return ret;
+}
+
+// RW 0x74DA04
+void AIMoveAndDeleteState::onExit(StateExitType status)
+{
+	machine().unlock();
+	AIMoveToMachineState::onExit(status);
+}
+
+void AIMoveAndDeleteState::crc(StateHasher &h) const
+{
+	AIMoveToMachineState::crc(h);
+	h.addBool(m_appendGoalPosition);
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------

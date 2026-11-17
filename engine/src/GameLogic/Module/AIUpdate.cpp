@@ -661,6 +661,8 @@ std::unique_ptr<AIStateMachine> AIUpdateInterface::makeStateMachine()
 	m->defineState(AI_FOLLOW_PATH_AS_TEAM_ATTACK, std::make_unique<AIFollowPathAsTeamState>(*m, true), AI_IDLE, AI_IDLE); // lane PORT-13: RW state 61
 	m->defineState(AI_WAIT, std::make_unique<AIWaitState>(*m), AI_IDLE, AI_IDLE);
 	m->defineState(AI_BUSY, std::make_unique<AIBusyState>(*m), AI_IDLE, AI_IDLE);
+	m->defineState(AI_MOVE_AND_DELETE, std::make_unique<AIMoveAndDeleteState>(*m, false), AI_IDLE, AI_IDLE); // fork RUNOFF-1: RW 0x753C2C
+	m->defineState(AI_MOVE_AND_DIE, std::make_unique<AIMoveAndDeleteState>(*m, true), AI_IDLE, AI_IDLE);     // fork RUNOFF-1: RW 0x754430
 	m->defineState(AI_MOVE_OUT_OF_THE_WAY, makeMoveOutOfTheWayState(*m), AI_GOING_IDLE, AI_GOING_IDLE); // lane PHYS-1: state 26 (AIUpdateAllies.cpp); PLAY-4: -> 0x4E
 	// COMBAT-1 (B1 AIStateMachineConstructor.cpp:563-567, 579): attack object 50, force attack object 51, dead 13; an attack ends in idle, which looks for the next target
 	m->defineState(AI_ATTACK_OBJECT, std::make_unique<AIAttackState>(*m, false, true, false), AI_IDLE, AI_IDLE);
@@ -1006,6 +1008,48 @@ void AIUpdateInterface::aiMoveToPosition(const Coord3D &pos, CommandSourceType s
 		m_attackMoveActive = false; // a move order ends an attack-move (COMBAT-1)
 	}
 	privateMoveToPosition(pos, source);
+	wakeUpNow();
+}
+
+// fork RUNOFF-1: AI command 0x38 / 0x41 (see AIUpdate.h)
+void AIUpdateInterface::aiMoveToAndDelete(const Coord3D &pos, CommandSourceType source)
+{
+	if (!acceptCommand(source, 0x38))
+	{
+		return; // RW 0x667174: aiDoCommand's gate
+	}
+	privateMoveToAndDelete(pos, source, AI_MOVE_AND_DELETE);
+}
+
+void AIUpdateInterface::aiMoveToAndDie(const Coord3D &pos, CommandSourceType source)
+{
+	if (!acceptCommand(source, 0x41))
+	{
+		return; // RW 0x667174: aiDoCommand's gate
+	}
+	privateMoveToAndDelete(pos, source, AI_MOVE_AND_DIE);
+}
+
+// RW 0x66B7A2 (state 30) / 0x66B817 (state 55)
+void AIUpdateInterface::privateMoveToAndDelete(const Coord3D &pos, CommandSourceType source, unsigned state)
+{
+	Object *obj = getObject();
+	if (!GarrisonRules::isMobile(*obj))
+	{
+		return;
+	}
+	if (m_curLocomotor)
+	{
+		m_curLocomotor->setPreferredPoint(*obj->getPosition()); // RW 0x5E39CE
+	}
+	m_machine->clear();
+	Coord3D goal;
+	goalPositionClipped(pos, source, goal);
+	m_machine->setGoalPosition(goal);
+	m_machine->setGoalObject(INVALID_ID);
+	m_mover->clearBlocked();
+	setLastCommandSource(source);
+	m_machine->setState(state);
 	wakeUpNow();
 }
 

@@ -69,8 +69,10 @@ enum AIStateType
 	AI_WAIT = 8,
 	AI_MOVE_OUT_OF_THE_WAY = 26,
 	AI_MOVE_AND_TIGHTEN = 27,
+	AI_MOVE_AND_DELETE = 30,            // fork RUNOFF-1: RotWK's state 30 (RW 0x753C2C: AIMoveAndDeleteState RW 0x7447B2; success and failure idle)
 	AI_BUSY = 42,
 	AI_FOLLOW_PATH_AS_TEAM = 54,        // lane BACKLOG-8 r2: RotWK's state 54 (RW 0x753B27: AIFollowPathAsTeamState, isAttack = false)
+	AI_MOVE_AND_DIE = 55,               // fork RUNOFF-1: RotWK's state 55 (RW 0x754430: AIMoveAndDieState RW 0x7447D9; success and failure idle)
 	AI_FOLLOW_PATH_AS_TEAM_ATTACK = 61, // lane PORT-13: RotWK's state 61 (RW 0x753B4E: AIFollowPathAsTeamState, isAttack = true)
 	AI_NO_STATE = 0xF423F
 };
@@ -297,6 +299,33 @@ protected:
 	std::unique_ptr<AIMoveToState> m_move;
 	Coord3D m_goalPosition{ 0.0f, 0.0f, 0.0f };
 	bool m_adjustsDestination = true;
+};
+
+// fork RUNOFF-1: the run-off states (ZH AIMoveAndDeleteState; RotWK adds the dying variant), both AIInternalMoveToState (RW 0x740C39) plus + 0x4C, "the goal
+// still goes on the path":
+//   * AIMoveAndDeleteState (state 30, vtable RW 0xC292E8): onEnter RW 0x75066F: the destination is not adjusted (+ 0x48 = 0), the machine locked (+ 0x38 = 1),
+//     the goal is the goal object's position, else the machine's goal position; + 0x4C = 1; the object takes MOVING and RUNNING_OFF_MAP; the internal move's
+//     onEnter (RW 0x74DADA). update RW 0x74BA18: FAILURE for an effectively dead object (+ 0x458 bit 0); the current locomotor may stand on invalid cells
+//     (+ 0x44 |= 2, ZH setAllowInvalidPosition); while + 0x4C is set, the AI has a path (+ 0x140) and is not waiting for one (+ 0x3B1), the goal at its
+//     ground height (terrain slot 0x18) is appended to the path (RW 0x665429, the ground layer) and + 0x4C cleared; the internal update (RW 0x748E46); an
+//     answer other than CONTINUE destroys the object (RW 0x62BBAB). onExit RW 0x74DA04: the machine unlocked, the internal onExit (RW 0x748D8A). xfer RW
+//     0x7428F3: the internal move's (RW 0x741923), then + 0x4C.
+//   * AIMoveAndDieState (state 55, vtable RW 0xC29348): onEnter RW 0x751A28 as above without the model conditions; update RW 0x752E33 as above, but an
+//     answer other than CONTINUE credits the last damage record's source with the kill (body slot 0x40 + 8, RW 0x6955BC type 1) and kills the object
+//     (RW 0x698EC3: UNRESISTABLE, NORMAL); the same onExit (RW 0x74DA04); xfer RW 0x743F05.
+class AIMoveAndDeleteState : public AIMoveToMachineState
+{
+public:
+	AIMoveAndDeleteState(AIStateMachine &m, bool dies);
+	StateReturnType onEnter() override;
+	StateReturnType update() override;
+	void onExit(StateExitType status) override;
+	void crc(class StateHasher &hasher) const override;
+	void xfer(class Xfer &x) override;
+
+private:
+	bool m_dies;
+	bool m_appendGoalPosition = false; ///< + 0x4C
 };
 
 // AIFollowPathState (ZH AIStates.cpp:3253-3420): walks the machine's goal path node by node; the exit-production variant (id 7) does not

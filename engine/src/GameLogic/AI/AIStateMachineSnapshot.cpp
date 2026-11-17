@@ -133,6 +133,13 @@ void AIMoveToMachineState::xfer(Xfer &x)
 	xferMove(x, ai().mover(), m_move);
 }
 
+// fork RUNOFF-1: RW 0x7428F3 / 0x743F05: the internal move's (RW 0x741923, the move state's above), then + 0x4C
+void AIMoveAndDeleteState::xfer(Xfer &x)
+{
+	AIMoveToMachineState::xfer(x);
+	x.xferBool(&m_appendGoalPosition);
+}
+
 void AIFollowPathState::xfer(Xfer &x)
 {
 	XferVersion v{ 1, 1 };
