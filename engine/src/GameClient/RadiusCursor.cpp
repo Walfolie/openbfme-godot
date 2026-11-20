@@ -212,6 +212,12 @@ bool run(ArchiveFileSystem *fs, const std::string &path, const std::string *memo
 }
 } // namespace
 
+// RW 0x7327BC (fork SHROUDPING-1: DynamicShroudClearingRangeUpdate's GridDecalTemplate)
+void parseRadiusDecalTemplate(INI *ini, void *, void *store, const void *)
+{
+	ini->initFromINI(store, kRadiusDecalFieldParse); // RW 0xC24278
+}
+
 bool RadiusCursorTemplates::load(ArchiveFileSystem &fs, std::string *error)
 {
 	const char *file = "data\\ini\\ingameui.ini";

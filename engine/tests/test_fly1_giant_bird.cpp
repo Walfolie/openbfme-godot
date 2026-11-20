@@ -33,6 +33,7 @@
 #include "GameLogic/Combat/CombatState.h"
 #include "GameLogic/Module/GiantBirdAIUpdate.h"
 #include "GameLogic/Module/SpawnBehavior.h"
+#include "GameLogic/Module/DynamicShroudClearingRangeUpdate.h"
 #include "GameLogic/Module/PartTheHeavensModules.h"
 #include "GameLogic/Module/ProjectileStreamUpdate.h"
 #include "GameLogic/Module/StrafeAreaUpdate.h"
@@ -1205,4 +1206,85 @@ TEST_CASE("partheavens1 retail: PartTheHeavens parses its three FCurves and Dest
 	}
 	MESSAGE("PartTheHeavens gone " << goneFrame << " frames after it was made");
 	CHECK(goneFrame == 50); // engine pin: DeletionUpdate's MinLifetime = MaxLifetime 10000 ms, 50 frames
+}
+
+TEST_CASE("shroudping1 retail: MapRevealPing's DynamicShroudClearingRangeUpdate grows the look to its VisionRange over GrowTime, holds it, shrinks it "
+		  "towards FinalVision and the ping goes after its DeletionUpdate (RW 0x88E6D8, RW 0x88E9B0)")
+{
+	OPENBFME_REQUIRE_START(s);
+	FlyArena arena(*s, "FactionMen", "FactionMordor");
+	arena.clearCreeps();
+	GameLogic &logic = arena.logic();
+	const unsigned made = logic.getFrame();
+	Object *o = arena.make("MapRevealPing", arena.a, 1500.0f, 1200.0f);
+	const ObjectID id = o->getID();
+	auto *ping = dynamic_cast<DynamicShroudClearingRangeUpdate *>(o->findModule("DynamicShroudClearingRangeUpdate"));
+	REQUIRE(ping);
+	const DynamicShroudClearingRangeUpdateModuleData &d = ping->data();
+	// ShrinkDelay 10000, ShrinkTime 5000, GrowDelay 0, GrowTime 1000, GrowInterval 10, ChangeInterval 80 ms: ceil(ms * 0.005f) frames (RW 0x73A429)
+	CHECK(d.m_shrinkDelay == 50);
+	CHECK(d.m_shrinkTime == 25);
+	CHECK(d.m_growDelay == 0);
+	CHECK(d.m_growTime == 5);
+	CHECK(d.m_growInterval == 1);
+	CHECK(d.m_changeInterval == 1);
+	CHECK(d.m_finalVision == 0.0f);
+	CHECK(d.m_gridDecalTemplate.texture == "EXGrid");
+	CHECK(d.m_gridDecalTemplate.style == 0x40); // SHADOW_ADDITIVE_DECAL (bit 6)
+	CHECK(d.m_gridDecalTemplate.opacityMin == 0.5f);
+	// the ctor: countdown ShrinkDelay + ShrinkTime, the deadlines from it; the native range the object's VisionRange (it has a player)
+	CHECK(ping->stateCountDown() == 75);
+	CHECK(ping->shrinkStartDeadline() == 25);
+	CHECK(ping->growStartDeadline() == 75);
+	CHECK(ping->sustainDeadline() == 70);
+	CHECK(ping->state() == DynamicShroudClearingRangeUpdate::NOT_STARTED_YET);
+	CHECK(ping->nativeClearingRange() == 240.0f);
+	// GROWING: 240 / 5 a frame; the range set every second frame (GrowInterval 1: set, then counted down)
+	arena.step();
+	// one update a step (UPDATE_SLEEP_NONE)
+	CHECK(ping->stateCountDown() == 74);
+	CHECK(ping->state() == DynamicShroudClearingRangeUpdate::GROWING);
+	CHECK(ping->currentClearingRange() == 48.0f);
+	CHECK(o->hasShroudClearingRange());
+	while (ping->state() == DynamicShroudClearingRangeUpdate::GROWING)
+	{
+		arena.step();
+	}
+	// the fifth update reaches 240: SUSTAINING, then held by the countdown's classification
+	CHECK(ping->stateCountDown() == 70);
+	CHECK(ping->state() == DynamicShroudClearingRangeUpdate::SUSTAINING);
+	CHECK(ping->currentClearingRange() == 240.0f);
+	CHECK(o->shroudClearingRangeOverride() == 240.0f);
+	bool gridStop = false;
+	for (const std::string &line : logic.report().stops)
+	{
+		gridStop = gridStop || line.rfind("[S-7177] DynamicShroudClearingRangeUpdate", 0) == 0;
+	}
+	CHECK(gridStop);
+	while (ping->state() == DynamicShroudClearingRangeUpdate::SUSTAINING)
+	{
+		arena.step();
+	}
+	// SHRINKING at countdown 25: (240 - FinalVision 0) / 25 a frame
+	CHECK(ping->state() == DynamicShroudClearingRangeUpdate::SHRINKING);
+	CHECK(ping->stateCountDown() == 24);
+	CHECK(ping->currentClearingRange() == 240.0f - 240.0f / 25.0f);
+	int goneFrame = -1;
+	float lastRange = ping->currentClearingRange();
+	for (int f = 0; f < 100 && goneFrame < 0; ++f)
+	{
+		arena.step();
+		if (logic.findObjectByID(id))
+		{
+			lastRange = ping->currentClearingRange();
+		}
+		else
+		{
+			goneFrame = (int)(logic.getFrame() - made);
+		}
+	}
+	MESSAGE("MapRevealPing gone " << goneFrame << " frames after it was made, its range then " << lastRange);
+	CHECK(goneFrame == 65); // engine pin: DeletionUpdate's MinLifetime = MaxLifetime 13000 ms, 65 frames: before the countdown's 75, still SHRINKING
+	CHECK(lastRange > 0.0f); // tolerance: the ping goes ten frames before the shrink ends, its range still above FinalVision
+	CHECK(lastRange < 240.0f); // tolerance: it shrank
 }
