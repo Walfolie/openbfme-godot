@@ -16,6 +16,7 @@
 #include "GameLogic/Module/SpecialEnemySenseUpdate.h"
 #include "GameLogic/Module/StrafeAreaUpdate.h"
 #include "GameLogic/Module/ProjectileStreamUpdate.h"
+#include "GameLogic/Module/PartTheHeavensModules.h"
 #include "GameLogic/Module/OathbreakerModules.h"
 #include "GameLogic/Object/Contain/AODHordeContain.h"
 #include "GameLogic/Module/EvacuateDamage.h"
@@ -74,6 +75,8 @@ void ExtraModules::registerAll(ModuleFactory &modules)
 	SpecialEnemySenseUpdate::registerModule(modules);       // fork SENSE-1
 	StrafeAreaUpdate::registerModule(modules);              // fork STRAFE-1
 	ProjectileStreamUpdate::registerModule(modules);        // fork STREAM-1
+	DestroyEnvironmentUpdate::registerModule(modules);      // fork PARTHEAVENS-1
+	PartTheHeavensUpdate::registerModule(modules);          // fork PARTHEAVENS-1
 	CommandButtonHuntUpdate::registerModule(modules);       // lane MODCOMPAT-MOD1
 	CritterEmitterUpdate::registerModule(modules); // lane MODCOMPAT-MOD1
 	AudioLoopUpgrade::registerModule(modules);     // lane MODCOMPAT-MOD1

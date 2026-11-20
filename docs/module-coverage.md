@@ -325,12 +325,12 @@ The live report's `unported_modules` (objects alive at the end of the run) of ei
 | 226 | DamageFieldUpdate | Behavior | 1 | 1 | ported |
 | 227 | DamageFilteredCreateObjectDie | Behavior | 1 | 2 | ported |
 | 228 | DelayedLuaEventUpdate | Behavior | 1 | 1 | missing |
-| 229 | DestroyEnvironmentUpdate | Behavior | 1 | 1 | missing |
+| 229 | DestroyEnvironmentUpdate | Behavior | 1 | 1 | ported |
 | 230 | DynamicShroudClearingRangeUpdate | Behavior | 1 | 1 | missing |
 | 231 | FadeAndDieOrnamentUpdate | Behavior | 1 | 1 | missing |
 | 232 | HordeSiegeEngineContain | Behavior | 1 | 1 | ported |
 | 233 | HordeWorkerAIUpdate | Behavior | 1 | 1 | base AI |
-| 234 | PartTheHeavensUpdate | Behavior | 1 | 1 | missing |
+| 234 | PartTheHeavensUpdate | Behavior | 1 | 1 | ported |
 | 235 | ProjectileStreamUpdate | Behavior | 1 | 1 | ported |
 | 236 | SalvageCrateCollide | Behavior | 1 | 1 | parsed only |
 | 237 | ShareExperienceBehavior | Behavior | 1 | 1 | ported |

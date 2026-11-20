@@ -33,6 +33,7 @@
 #include "GameLogic/Combat/CombatState.h"
 #include "GameLogic/Module/GiantBirdAIUpdate.h"
 #include "GameLogic/Module/SpawnBehavior.h"
+#include "GameLogic/Module/PartTheHeavensModules.h"
 #include "GameLogic/Module/ProjectileStreamUpdate.h"
 #include "GameLogic/Module/StrafeAreaUpdate.h"
 #include "GameLogic/NewGame/NewGame.h"
@@ -1130,4 +1131,78 @@ TEST_CASE("stream1 retail: a fire drake's flame makes its FlamethrowerProjectile
 	}
 	MESSAGE("stream gone " << goneFrame << " frames after the drake");
 	CHECK(goneFrame == 3); // the ring empties (its projectiles gone), then the stream with no owner is destroyed
+}
+
+TEST_CASE("partheavens1 retail: PartTheHeavens parses its three FCurves and DestroyEnvironmentUpdate's times, finds no environment object with a "
+		  "RainOfFireUpdate and sleeps, and the object goes after its DeletionUpdate (RW 0x73B723, RW 0x8AFEB5, RW 0x8B022E)")
+{
+	OPENBFME_REQUIRE_START(s);
+	FlyArena arena(*s, "FactionMen", "FactionMordor");
+	arena.clearCreeps();
+	GameLogic &logic = arena.logic();
+	const unsigned made = logic.getFrame();
+	Object *o = arena.make("PartTheHeavens", arena.a, 1500.0f, 1200.0f);
+	const ObjectID id = o->getID();
+	auto *env = dynamic_cast<DestroyEnvironmentUpdate *>(o->findModule("DestroyEnvironmentUpdate"));
+	auto *heavens = dynamic_cast<PartTheHeavensUpdate *>(o->findModule("PartTheHeavensUpdate"));
+	REQUIRE(env);
+	REQUIRE(heavens);
+	CHECK(env->startFrame() == made);
+	CHECK(heavens->startFrame() == made);
+	// StartTime 5000 / DestructionTime 2000 ms: ceil(ms * 0.005f) frames (RW 0x73A429)
+	CHECK(env->data().m_startTime == 25);
+	CHECK(env->data().m_destructionTime == 10);
+	const PartTheHeavensUpdateModuleData &d = heavens->data();
+	CHECK(d.m_texture == "SCCommandBar");
+	CHECK((d.m_color & 0xFFFFFF) == 0xFFFFFF);
+	// Radius: T:0 V:0 O:0, T:20 V:100 -> the first key's in tangent from its out (0), the second's from the slope 100 / 20
+	REQUIRE(d.m_radius.keys.size() == 2);
+	CHECK(d.m_radius.keys[0].time == 0.0f);
+	CHECK(d.m_radius.keys[0].value == 0.0f);
+	CHECK(d.m_radius.keys[0].inTangent == 0.0f);
+	CHECK(d.m_radius.keys[0].outTangent == 0.0f);
+	CHECK(d.m_radius.keys[1].time == 20.0f);
+	CHECK(d.m_radius.keys[1].value == 100.0f);
+	CHECK(d.m_radius.keys[1].inTangent == 5.0f);
+	CHECK(d.m_radius.keys[1].outTangent == 5.0f);
+	// Opacity: T:0 V:0, T:100 V:.50 -> both tangents of both keys the slope 0.5 / 100
+	const float opacitySlope = 0.5f / 100.0f;
+	REQUIRE(d.m_opacity.keys.size() == 2);
+	CHECK(d.m_opacity.keys[0].inTangent == opacitySlope);
+	CHECK(d.m_opacity.keys[0].outTangent == opacitySlope);
+	CHECK(d.m_opacity.keys[1].value == 0.5f);
+	CHECK(d.m_opacity.keys[1].inTangent == opacitySlope);
+	CHECK(d.m_opacity.keys[1].outTangent == opacitySlope);
+	CHECK(d.m_opacity.inPadding == FCurve::PAD_HOLD);
+	// Angle: InPadding HOLD, OutPadding CYCLE; T:0 V:0, T:100 V:360 I:0 O:0, T:200 V:0 I:0
+	REQUIRE(d.m_angle.keys.size() == 3);
+	CHECK(d.m_angle.inPadding == FCurve::PAD_HOLD);
+	CHECK(d.m_angle.outPadding == FCurve::PAD_CYCLE);
+	CHECK(d.m_angle.keys[0].inTangent == 360.0f / 100.0f);
+	CHECK(d.m_angle.keys[0].outTangent == 360.0f / 100.0f);
+	CHECK(d.m_angle.keys[1].time == 100.0f);
+	CHECK(d.m_angle.keys[1].value == 360.0f);
+	CHECK(d.m_angle.keys[1].inTangent == 0.0f);
+	CHECK(d.m_angle.keys[1].outTangent == 0.0f);
+	CHECK(d.m_angle.keys[2].time == 200.0f);
+	CHECK(d.m_angle.keys[2].inTangent == 0.0f);
+	CHECK(d.m_angle.keys[2].outTangent == 0.0f);
+	arena.step(2);
+	CHECK(env->environmentObject() == INVALID_ID); // no RotWK object has a RainOfFireUpdate: nothing adopted, asleep for good
+	bool decalStop = false, rainStop = false;
+	for (const std::string &line : logic.report().stops)
+	{
+		decalStop = decalStop || line.rfind("[S-7176] PartTheHeavensUpdate", 0) == 0;
+		rainStop = rainStop || line.rfind("[S-7176] DestroyEnvironmentUpdate", 0) == 0;
+	}
+	CHECK(decalStop);
+	CHECK_FALSE(rainStop);
+	int goneFrame = -1;
+	for (int f = 0; f < 100 && goneFrame < 0; ++f)
+	{
+		arena.step();
+		goneFrame = logic.findObjectByID(id) ? -1 : (int)(logic.getFrame() - made);
+	}
+	MESSAGE("PartTheHeavens gone " << goneFrame << " frames after it was made");
+	CHECK(goneFrame == 50); // engine pin: DeletionUpdate's MinLifetime = MaxLifetime 10000 ms, 50 frames
 }
